@@ -634,38 +634,67 @@ function setupEventHandlers() {
         state.isDragging = false;
     });
 
-    // Rotación del Maniquí 3D
+    // Rotación del Maniquí 3D (Slider)
     rotationSlider.addEventListener("input", (e) => {
         state.rotationAngle = parseInt(e.target.value);
         rotationAngleVal.textContent = state.rotationAngle + "°";
         draw3DMannequin();
+        if (state.renderMode === "real") {
+            renderPhotorealisticView();
+        }
     });
 
-    // Arrastrar en el canvas 3D para rotar
+    // Arrastrar en el canvas 3D o vista fotorrealista para rotar (Mouse & Touch)
     let is3dDragging = false;
     let start3dX = 0;
-    sim3dCanvasContainer.addEventListener("mousedown", (e) => {
-        is3dDragging = true;
-        start3dX = e.clientX;
-    });
 
-    window.addEventListener("mousemove", (e) => {
+    const start3dDrag = (clientX) => {
+        is3dDragging = true;
+        start3dX = clientX;
+    };
+
+    const move3dDrag = (clientX) => {
         if (!is3dDragging) return;
-        const deltaX = e.clientX - start3dX;
-        start3dX = e.clientX;
+        const deltaX = clientX - start3dX;
+        start3dX = clientX;
         
         // Ajustar ángulo
-        state.rotationAngle = (state.rotationAngle + Math.round(deltaX * 0.5)) % 360;
+        state.rotationAngle = (state.rotationAngle + Math.round(deltaX * 0.8)) % 360;
         if (state.rotationAngle < 0) state.rotationAngle += 360;
         
         rotationSlider.value = state.rotationAngle;
         rotationAngleVal.textContent = state.rotationAngle + "°";
         draw3DMannequin();
-    });
+        if (state.renderMode === "real") {
+            renderPhotorealisticView();
+        }
+    };
 
-    window.addEventListener("mouseup", () => {
+    const end3dDrag = () => {
         is3dDragging = false;
-    });
+    };
+
+    // Registrar eventos en el contenedor Vectorial y Fotorrealista
+    sim3dCanvasContainer.addEventListener("mousedown", (e) => start3dDrag(e.clientX));
+    sim3dCanvasContainer.addEventListener("touchstart", (e) => {
+        if (e.touches && e.touches[0]) start3dDrag(e.touches[0].clientX);
+    }, { passive: true });
+
+    const realContainerEl = document.getElementById("sim-real-image-container");
+    if (realContainerEl) {
+        realContainerEl.addEventListener("mousedown", (e) => start3dDrag(e.clientX));
+        realContainerEl.addEventListener("touchstart", (e) => {
+            if (e.touches && e.touches[0]) start3dDrag(e.touches[0].clientX);
+        }, { passive: true });
+    }
+
+    window.addEventListener("mousemove", (e) => move3dDrag(e.clientX));
+    window.addEventListener("touchmove", (e) => {
+        if (e.touches && e.touches[0]) move3dDrag(e.touches[0].clientX);
+    }, { passive: true });
+
+    window.addEventListener("mouseup", end3dDrag);
+    window.addEventListener("touchend", end3dDrag);
 
     // Manejador de selección de color de látex fotorrealista
     document.querySelectorAll(".color-chip").forEach(chip => {
@@ -698,13 +727,15 @@ function setSimMode(mode) {
         vectorBtn.classList.remove("active");
         sim3dCanvasContainer.classList.add("hidden");
         realContainer.classList.remove("hidden");
-        renderPhotorealisticView();
+        renderPhotorealisticView(true);
     }
     draw3DMannequin();
 }
 
-function renderPhotorealisticView() {
+function renderPhotorealisticView(force = false) {
     const realContainer = document.getElementById("sim-real-image-container");
+    if (!realContainer) return;
+
     const viewAngle = (state.rotationAngle >= 90 && state.rotationAngle < 270) ? "back" : "front";
     
     let garmentPrefix = state.garment;
@@ -714,9 +745,17 @@ function renderPhotorealisticView() {
     const imagePath = `assets/${imageName}`;
     const colorClass = `latex-color-${state.currentColor || 'black'}`;
     
+    const viewKey = `${state.gender}_${garmentPrefix}_${viewAngle}`;
+    if (!force && realContainer.dataset.currentView === viewKey) {
+        const img = realContainer.querySelector(".sim-real-image-el");
+        if (img) img.className = `sim-real-image-el ${colorClass}`;
+        return;
+    }
+    
+    realContainer.dataset.currentView = viewKey;
     realContainer.innerHTML = `
         <div class="loader-real-sim">Cargando textura de látex fotorrealista...</div>
-        <img src="${imagePath}" class="sim-real-image-el ${colorClass}" style="opacity: 0;" onload="this.style.opacity=1; this.previousElementSibling.style.display='none'" onerror="this.previousElementSibling.textContent='Imagen no disponible para este ángulo/prenda'; this.style.display='none'">
+        <img src="${imagePath}" class="sim-real-image-el ${colorClass}" style="opacity: 0;" onload="this.style.opacity=1; if (this.previousElementSibling) this.previousElementSibling.style.display='none'" onerror="if (this.previousElementSibling) this.previousElementSibling.textContent='Imagen no disponible para este ángulo/prenda'; this.style.display='none'">
     `;
 }
 
