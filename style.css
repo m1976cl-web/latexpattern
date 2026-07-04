@@ -844,15 +844,24 @@ input[type="range"]::-webkit-slider-thumb {
     opacity: 0.7;
 }
 
+.cad-dimension-callout {
+    transition: all 0.2s ease;
+}
+.cad-dimension-callout:hover {
+    filter: drop-shadow(0 0 5px var(--accent-cyan-glow));
+}
+
 .pattern-dimension-line {
-    stroke: var(--text-muted);
+    stroke: var(--accent-cyan);
     stroke-width: 1;
+    opacity: 0.85;
 }
 
 .pattern-dimension-text {
-    fill: var(--text-secondary);
-    font-size: 9px;
+    fill: var(--accent-cyan);
+    font-size: 8.5px;
     font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
     text-anchor: middle;
 }
 

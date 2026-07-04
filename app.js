@@ -877,67 +877,85 @@ function drawPattern() {
     canvasContainer.innerHTML = svgContent;
 }
 
+// HELPER: LÍNEA Y ETIQUETA DE MEDIDA DE PRECISIÓN (DIMENSION CALLOUT)
+function drawDimensionCallout(x1, y1, x2, y2, text) {
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+    return `
+        <g class="cad-dimension-callout">
+            <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="pattern-dimension-line" stroke="var(--accent-cyan)" stroke-width="0.8" stroke-dasharray="3,3" />
+            <circle cx="${x1}" cy="${y1}" r="2.5" fill="var(--accent-cyan)" />
+            <circle cx="${x2}" cy="${y2}" r="2.5" fill="var(--accent-cyan)" />
+            <rect x="${midX - 36}" y="${midY - 8}" width="72" height="14" rx="3" fill="rgba(6,6,9,0.88)" stroke="rgba(0,240,255,0.5)" stroke-width="0.8" />
+            <text x="${midX}" y="${midY + 2}" class="pattern-dimension-text" fill="var(--accent-cyan)" font-size="8.5" font-family="'Space Grotesk', sans-serif" font-weight="600" text-anchor="middle">${text}</text>
+        </g>
+    `;
+}
+
 // 2D CAD: SOSTÉN / BRA
 function drawBraPattern(m, seam) {
     const bust = m.bustCircum || 90;
-    const underbust = m.waistCircum || 68; // Cintura como aproximación de bajo busto
+    const waist = m.waistCircum || 68;
+    const armpit = m.armpitCircum || 88;
+    const neckToWaist = m.neckToWaist || 42;
     
     // Proporciones del patrón de copa circular de látex (2 piezas: Copa Superior y Copa Inferior)
-    const cupDiameter = (bust * 0.15) * 6.5; 
-    const bandLength = (underbust * 0.4) * 8.0; 
+    const cupDiameter = (bust * 0.14) * 6.5; 
+    const bandLength = (waist * 0.42) * 7.5; 
+    const bandHeight = (armpit * 0.08) * 4.0;
     
     const cx = 150;
-    const cy = 180;
+    const cy = 160;
 
     // Copa Superior (Crescent shape)
     const cupTopPath = `
         M ${cx} ${cy}
         A ${cupDiameter * 0.5} ${cupDiameter * 0.5} 0 0 1 ${cx + cupDiameter} ${cy}
-        Q ${cx + cupDiameter * 0.5} ${cy + cupDiameter * 0.2} ${cx} ${cy}
+        Q ${cx + cupDiameter * 0.5} ${cy + cupDiameter * 0.22} ${cx} ${cy}
         Z
     `;
     const cupTopSeam = `
         M ${cx - seam} ${cy}
         A ${cupDiameter * 0.5 + seam} ${cupDiameter * 0.5 + seam} 0 0 1 ${cx + cupDiameter + seam} ${cy}
-        Q ${cx + cupDiameter * 0.5} ${cy + cupDiameter * 0.2 + seam} ${cx - seam} ${cy}
+        Q ${cx + cupDiameter * 0.5} ${cy + cupDiameter * 0.22 + seam} ${cx - seam} ${cy}
         Z
     `;
 
     // Copa Inferior (Base con pinza integrada)
     const bx = 150;
-    const by = 280;
+    const by = 270;
     const cupBotPath = `
         M ${bx} ${by}
-        Q ${bx + cupDiameter * 0.25} ${by + cupDiameter * 0.25} ${bx + cupDiameter * 0.5} ${by + cupDiameter * 0.1}
+        Q ${bx + cupDiameter * 0.25} ${by + cupDiameter * 0.25} ${bx + cupDiameter * 0.5} ${by + cupDiameter * 0.12}
         Q ${bx + cupDiameter * 0.75} ${by + cupDiameter * 0.25} ${bx + cupDiameter} ${by}
         A ${cupDiameter * 0.5} ${cupDiameter * 0.5} 0 0 1 ${bx} ${by}
         Z
     `;
     const cupBotSeam = `
         M ${bx - seam} ${by}
-        Q ${bx + cupDiameter * 0.25} ${by + cupDiameter * 0.25 + seam} ${bx + cupDiameter * 0.5} ${by + cupDiameter * 0.1 + seam}
+        Q ${bx + cupDiameter * 0.25} ${by + cupDiameter * 0.25 + seam} ${bx + cupDiameter * 0.5} ${by + cupDiameter * 0.12 + seam}
         Q ${bx + cupDiameter * 0.75} ${by + cupDiameter * 0.25 + seam} ${bx + cupDiameter + seam} ${by}
         A ${cupDiameter * 0.5 + seam} ${cupDiameter * 0.5 + seam} 0 0 1 ${bx - seam} ${by}
         Z
     `;
 
     // Tira de Contorno (Band)
-    const tX = 460;
+    const tX = 420;
     const tY = 160;
     const bandPath = `
         M ${tX} ${tY}
         h ${bandLength}
-        q 20 40 0 80
+        q 20 ${bandHeight * 0.6} 0 ${bandHeight}
         h ${-bandLength}
-        c ${-cupDiameter*0.3} ${-10} ${-cupDiameter*0.3} ${-70} 0 -80
+        c ${-cupDiameter*0.3} ${-10} ${-cupDiameter*0.3} ${-bandHeight + 10} 0 ${-bandHeight}
         Z
     `;
     const bandSeam = `
         M ${tX - seam} ${tY - seam}
         h ${bandLength + seam * 2}
-        q 20 40 0 80 + seam * 2
+        q 20 ${bandHeight * 0.6} 0 ${bandHeight + seam * 2}
         h ${-(bandLength + seam * 2)}
-        c ${-cupDiameter*0.3 - seam} ${-10} ${-cupDiameter*0.3 - seam} ${-70} 0 ${-80 - seam * 2}
+        c ${-cupDiameter*0.3 - seam} ${-10} ${-cupDiameter*0.3 - seam} ${-bandHeight + 10} 0 ${-bandHeight - seam * 2}
         Z
     `;
 
@@ -954,16 +972,19 @@ function drawBraPattern(m, seam) {
         <path d="${bandSeam}" class="seam-allowance-outline" />
         <path d="${bandPath}" class="pattern-outline" />
 
+        <!-- Acotaciones de Medidas de Precisión -->
+        ${drawDimensionCallout(cx, cy - 15, cx + cupDiameter, cy - 15, `Busto: ${(bust).toFixed(1)}cm`)}
+        ${drawDimensionCallout(tX, tY - 15, tX + bandLength, tY - 15, `Banda: ${(waist * 0.5).toFixed(1)}cm`)}
+
         <!-- Textos -->
-        <text x="${cx + cupDiameter/2}" y="${cy - 20}" class="pattern-text-label">COPA SUPERIOR</text>
-        <text x="${cx + cupDiameter/2}" y="${cy - 5}" class="pattern-text-desc">Cortar 2x (Espejo) Látex ${state.thickness}mm</text>
+        <text x="${cx + cupDiameter/2}" y="${cy + 25}" class="pattern-text-label">COPA SUPERIOR</text>
+        <text x="${cx + cupDiameter/2}" y="${cy + 40}" class="pattern-text-desc">Cortar 2x (Espejo)</text>
 
-        <text x="${bx + cupDiameter/2}" y="${by + cupDiameter * 0.4}" class="pattern-text-label">COPA INFERIOR BASE</text>
-        <text x="${bx + cupDiameter/2}" y="${by + cupDiameter * 0.4 + 15}" class="pattern-text-desc">Cortar 2x (Espejo)</text>
+        <text x="${bx + cupDiameter/2}" y="${by + cupDiameter * 0.35}" class="pattern-text-label">COPA BASE INFERIOR</text>
+        <text x="${bx + cupDiameter/2}" y="${by + cupDiameter * 0.35 + 15}" class="pattern-text-desc">Cortar 2x (Espejo)</text>
 
-        <text x="${tX + bandLength/2}" y="${tY + 45}" class="pattern-text-label">BANDA CONTORNO</text>
-        <text x="${tX + bandLength/2}" y="${tY + 60}" class="pattern-text-desc">Cortar 2x (Látex Grueso 0.50mm+)</text>
-        <text x="${tX + bandLength/2}" y="${tY - 10}" class="pattern-dimension-text">Largo: ${(bandLength/8.0).toFixed(1)} cm</text>
+        <text x="${tX + bandLength/2}" y="${tY + bandHeight/2 + 4}" class="pattern-text-label">BANDA CONTORNO</text>
+        <text x="${tX + bandLength/2}" y="${tY + bandHeight/2 + 20}" class="pattern-text-desc">Cortar 2x (Bajo Busto ${(waist).toFixed(0)}cm)</text>
     `;
 }
 
@@ -972,11 +993,12 @@ function drawColalessPattern(m, seam) {
     const w = m.waistCircum || 68;
     const h = m.hipCircum || 95;
     const u = m.ubend || 150;
+    const thigh = m.thighCircum || 54;
 
     const frontWaist = (w / 4) * 8.5;
-    const backWaist = 18; // String muy estrecho en espalda
+    const backWaist = 18; // String estrecho
     const rise = (u * 0.14) * 7.5; 
-    const crotch = 16; 
+    const crotch = (thigh * 0.1) * 3.2; 
 
     const fx = 150;
     const fy = 100;
@@ -998,7 +1020,7 @@ function drawColalessPattern(m, seam) {
     `;
 
     // Trasero (Colaless String)
-    const bx = 480;
+    const bx = 460;
     const by = 100;
     const bPath = `
         M ${bx} ${by}
@@ -1024,12 +1046,17 @@ function drawColalessPattern(m, seam) {
         <path d="${bSeam}" class="seam-allowance-outline" />
         <path d="${bPath}" class="pattern-outline" />
 
+        <!-- Acotaciones de Medidas -->
+        ${drawDimensionCallout(fx, fy - 15, fx + frontWaist, fy - 15, `Cintura Fr: ${(w * 0.25).toFixed(1)}cm`)}
+        ${drawDimensionCallout(fx, fy, fx, fy + rise, `Tiro: ${(u * 0.2).toFixed(1)}cm`)}
+        ${drawDimensionCallout(bx, by - 15, bx + frontWaist, by - 15, `Cadera Tr: ${(h * 0.25).toFixed(1)}cm`)}
+
         <!-- Textos -->
         <text x="${fx + frontWaist*0.5}" y="${fy + rise*0.4}" class="pattern-text-label">COLALESS FRONTAL</text>
         <text x="${fx + frontWaist*0.5}" y="${fy + rise*0.4 + 15}" class="pattern-text-desc">Cortar 1x al Doblez</text>
 
         <text x="${bx + frontWaist*0.5}" y="${by + rise*0.4}" class="pattern-text-label">COLALESS TRASERO</text>
-        <text x="${bx + frontWaist*0.5}" y="${by + rise*0.4 + 15}" class="pattern-text-desc">Cortar 1x al Doblez (String)</text>
+        <text x="${bx + frontWaist*0.5}" y="${by + rise*0.4 + 15}" class="pattern-text-desc">Cortar 1x (String)</text>
     `;
 }
 
@@ -1038,11 +1065,12 @@ function drawBoxerPattern(m, seam) {
     const w = m.waistCircum || 68;
     const h = m.hipCircum || 95;
     const thigh = m.thighCircum || 54;
+    const ubend = m.ubend || 150;
 
     const wHalf = (w / 4) * 8.5;
     const hHalf = (h / 4) * 9.5;
     const thHalf = (thigh * 0.5) * 8.5;
-    const length = 180; // Largo del short
+    const length = (ubend * 0.12) * 9.0;
 
     const bx = 160;
     const by = 120;
@@ -1072,25 +1100,34 @@ function drawBoxerPattern(m, seam) {
         <path d="${boxerSeam}" class="seam-allowance-outline" />
         <path d="${boxerPath}" class="pattern-outline" />
 
+        <!-- Acotaciones de Medidas -->
+        ${drawDimensionCallout(bx, by - 15, bx + wHalf, by - 15, `Cintura: ${(w * 0.25).toFixed(1)}cm`)}
+        ${drawDimensionCallout(bx + wHalf, by, bx + thHalf, by + length + 40, `Muslo: ${(thigh).toFixed(1)}cm`)}
+
         <text x="${bx + wHalf*0.5}" y="${by + 90}" class="pattern-text-label">BOXER / CULOTTE</text>
         <text x="${bx + wHalf*0.5}" y="${by + 110}" class="pattern-text-desc">Cortar 4x (Látex ${state.thickness}mm)</text>
-        <text x="${bx + wHalf*0.5}" y="${by - 15}" class="pattern-dimension-text">Muslo: ${(thigh).toFixed(1)} cm</text>
     `;
 }
 
-// 2D CAD: BODY / BODYSUIT
+// 2D CAD: BODY / BODYSUIT (Con las 9 medidas de torso)
 function drawBodyPattern(m, seam) {
     const bust = m.bustCircum || 90;
     const waist = m.waistCircum || 68;
     const hips = m.hipCircum || 95;
     const torso = m.ubend || 150;
     const neck = m.neckCircum || 33;
+    const neckLen = m.neckLength || 7;
+    const shoulder = m.shoulderLen || 38;
+    const armpit = m.armpitCircum || 88;
+    const neckToWaist = m.neckToWaist || 42;
 
     const bh = bust * 1.8;
     const wh = waist * 1.5;
     const hh = hips * 1.8;
     const th = torso * 2.5;
     const nh = neck * 1.1;
+    const sh = shoulder * 2.2;
+    const nkh = neckLen * 4.0;
 
     const fx = 180;
     const fy = 80;
@@ -1100,7 +1137,7 @@ function drawBodyPattern(m, seam) {
     const fPath = `
         M ${fx} ${fy}
         h ${nh * 0.5}
-        l ${nh * 0.4} ${nh * 0.3}
+        l ${sh * 0.35} ${nkh}
         c ${chestCurve} ${th * 0.1} ${bh * 0.25} ${th * 0.15} ${bh * 0.2} ${th * 0.25}
         q ${-(bh - wh) * 0.3} ${th * 0.2} ${-(bh - wh) * 0.4} ${th * 0.3}
         q ${(hh - wh) * 0.3} ${th * 0.2} ${(hh - wh) * 0.4} ${th * 0.3}
@@ -1112,7 +1149,7 @@ function drawBodyPattern(m, seam) {
     const fSeam = `
         M ${fx} ${fy - seam}
         h ${nh * 0.5 + seam}
-        l ${nh * 0.4 + seam} ${nh * 0.3}
+        l ${sh * 0.35 + seam} ${nkh}
         c ${chestCurve + seam} ${th * 0.1} ${bh * 0.25 + seam} ${th * 0.15} ${bh * 0.2 + seam} ${th * 0.25}
         q ${-(bh - wh) * 0.3} ${th * 0.2} ${-(bh - wh) * 0.4} ${th * 0.3}
         q ${(hh - wh) * 0.3} ${th * 0.2} ${(hh - wh) * 0.4} ${th * 0.3}
@@ -1125,65 +1162,97 @@ function drawBodyPattern(m, seam) {
         <path d="${fSeam}" class="seam-allowance-outline" />
         <path d="${fPath}" class="pattern-outline" />
         
+        <!-- Acotaciones de Medidas de Precisión -->
+        ${drawDimensionCallout(fx, fy - 15, fx + nh * 0.5, fy - 15, `Cuello: ${(neck).toFixed(1)}cm`)}
+        ${drawDimensionCallout(fx + nh * 0.5, fy, fx + nh * 0.5 + sh * 0.35, fy + nkh, `Hombro: ${(shoulder).toFixed(1)}cm`)}
+        ${drawDimensionCallout(fx, fy + th * 0.25, fx + bh * 0.2, fy + th * 0.25, `Busto: ${(bust).toFixed(1)}cm`)}
+        ${drawDimensionCallout(fx, fy + th * 0.55, fx + wh * 0.2, fy + th * 0.55, `Cintura: ${(waist).toFixed(1)}cm`)}
+        ${drawDimensionCallout(fx, fy + th * 0.85, fx + hh * 0.2, fy + th * 0.85, `Cadera: ${(hips).toFixed(1)}cm`)}
+
         <text x="${fx + nh}" y="${fy + th * 0.4}" class="pattern-text-label">BODYSUIT DELANTERO</text>
-        <text x="${fx + nh}" y="${fy + th * 0.4 + 20}" class="pattern-text-desc">Cortar 1x al Doblez (Látex ${state.thickness}mm)</text>
+        <text x="${fx + nh}" y="${fy + th * 0.4 + 18}" class="pattern-text-desc">Cortar 1x al Doblez (Talle: ${(neckToWaist).toFixed(1)}cm)</text>
     `;
 }
 
-// 2D CAD: CATSUIT (Con ajuste avanzado basado en las sub-medidas)
+// 2D CAD: CATSUIT (Con las 28 medidas integradas)
 function drawCatsuitPattern(m, seam) {
     const bust = m.bustCircum || 90;
     const waist = m.waistCircum || 68;
     const hips = m.hipCircum || 95;
     const thigh = m.thighCircum || 54;
+    const knee = m.kneeCircum || 36;
     const calf = m.shankCircum || 34;
     const ankle = m.ankleCircum || 22;
     const leg = m.legLength || 72;
+    const kneeToAnkle = m.kneeToAnkle || 38;
     const arm = m.armLength || 56;
     const bicep = m.upperArm || 28;
+    const elbow = m.elbowCircum || 24;
+    const forearm = m.forearmCircum || 22;
+    const wrist = m.wristCircum || 16;
+    const shoulder = m.shoulderLen || 38;
+    const neck = m.neckCircum || 33;
+    const neckLen = m.neckLength || 7;
+    const armpit = m.armpitCircum || 88;
 
-    const fx = 120;
+    const fx = 80;
     const fy = 50;
 
     // Torso Frontal del Catsuit
     const torsoPath = `
         M ${fx} ${fy}
-        h 30
-        l 40 30
-        q 20 50 15 100
-        q -30 80 -40 120
-        q 40 80 50 120
-        v ${leg * 3}
+        h ${(neck * 0.6)}
+        l ${(shoulder * 0.8)} ${(neckLen * 3.5)}
+        q ${(bust * 0.25)} 50 ${(bust * 0.15)} 100
+        q ${-(bust - waist) * 0.4} 80 ${-(bust - waist) * 0.5} 120
+        q ${(hips - waist) * 0.4} 80 ${(hips - waist) * 0.5} 120
+        v ${leg * 2.5}
         h -40
-        v ${-leg * 3}
+        v ${-leg * 2.5}
         c -20 10 -40 20 -55 0
         Z
     `;
 
-    // Manga con ajuste de bíceps y muñeca
+    // Manga 4 Tramos (Bíceps -> Codo -> Antebrazo -> Muñeca)
     const mx = 350;
     const my = 50;
-    const bicepScale = bicep * 3.5;
+    const bicepScale = bicep * 2.8;
+    const elbowScale = elbow * 2.6;
+    const forearmScale = forearm * 2.4;
+    const wristScale = wrist * 2.2;
+    const armSegment = (arm * 4.2) / 3;
+
     const armPath = `
         M ${mx} ${my}
-        q 45 -10 90 0
-        l -20 ${arm * 4.5}
-        h ${-bicepScale * 0.6}
+        h ${bicepScale}
+        l ${-(bicepScale - elbowScale) * 0.5} ${armSegment}
+        l ${-(elbowScale - forearmScale) * 0.5} ${armSegment}
+        l ${-(forearmScale - wristScale) * 0.5} ${armSegment}
+        h ${-wristScale}
+        l ${-(forearmScale - wristScale) * 0.5} ${-armSegment}
+        l ${-(elbowScale - forearmScale) * 0.5} ${-armSegment}
         Z
     `;
 
-    // Pierna cónica detallada (Muslo -> Rodilla -> Pantorrilla -> Tobillo)
-    const px = 550;
+    // Pierna 4 Tramos (Muslo -> Rodilla -> Pantorrilla -> Tobillo)
+    const px = 560;
     const py = 50;
     const thighScale = thigh * 2.2;
-    const ankleScale = ankle * 2.0;
+    const kneeScale = knee * 2.0;
+    const calfScale = calf * 1.8;
+    const ankleScale = ankle * 1.6;
+    const legSegment1 = (leg * 2.2);
+    const legSegment2 = (kneeToAnkle * 2.5);
+
     const legPath = `
         M ${px} ${py}
         h ${thighScale}
-        l -20 ${leg * 1.5}
-        l -15 ${leg * 1.5}
-        l -10 ${leg * 1.5}
+        l ${-(thighScale - kneeScale) * 0.5} ${legSegment1 * 0.5}
+        l ${-(kneeScale - calfScale) * 0.5} ${legSegment2 * 0.4}
+        l ${-(calfScale - ankleScale) * 0.5} ${legSegment2 * 0.6}
         h ${-ankleScale}
+        l ${-(calfScale - ankleScale) * 0.5} ${-legSegment2 * 0.6}
+        l ${-(kneeScale - calfScale) * 0.5} ${-legSegment2 * 0.4}
         Z
     `;
 
@@ -1192,108 +1261,158 @@ function drawCatsuitPattern(m, seam) {
         <path d="${armPath}" class="pattern-outline" />
         <path d="${legPath}" class="pattern-outline" />
 
+        <!-- Acotaciones de Medidas de Precisión -->
+        ${drawDimensionCallout(mx, my - 15, mx + bicepScale, my - 15, `Bíceps: ${(bicep).toFixed(1)}cm`)}
+        ${drawDimensionCallout(mx, my + armSegment * 3 + 15, mx + wristScale, my + armSegment * 3 + 15, `Muñeca: ${(wrist).toFixed(1)}cm`)}
+        ${drawDimensionCallout(px, py - 15, px + thighScale, py - 15, `Muslo: ${(thigh).toFixed(1)}cm`)}
+        ${drawDimensionCallout(px, py + legSegment1 * 0.5, px + kneeScale, py + legSegment1 * 0.5, `Rodilla: ${(knee).toFixed(1)}cm`)}
+        ${drawDimensionCallout(px, py + legSegment1 * 0.5 + legSegment2, px + ankleScale, py + legSegment1 * 0.5 + legSegment2, `Tobillo: ${(ankle).toFixed(1)}cm`)}
+
         <text x="${fx + 25}" y="${fy + 180}" class="pattern-text-label">TORSO CATSUIT</text>
-        <text x="${mx + 40}" y="${my + 130}" class="pattern-text-label">MANGA CATSUIT</text>
-        <text x="${px + 40}" y="${py + 150}" class="pattern-text-label">PIERNA CATSUIT</text>
+        <text x="${mx + bicepScale*0.5}" y="${my + armSegment}" class="pattern-text-label">MANGA (Brazo: ${(arm).toFixed(0)}cm)</text>
+        <text x="${px + thighScale*0.5}" y="${py + legSegment1*0.3}" class="pattern-text-label">PIERNA (Entrepierna: ${(leg).toFixed(0)}cm)</text>
     `;
 }
 
-// 2D CAD: MÁSCARA
+// 2D CAD: MÁSCARA (Cabeza y Cuello)
 function drawMaskPattern(m, seam) {
-    const head = m.headCircum || 56;
-    const hh = m.headLength || 24;
+    const head = m.headCircum || 55;
+    const headLen = m.headLength || 23;
+    const neck = m.neckCircum || 33;
+    const neckLen = m.neckLength || 7;
 
     const mx = 180;
-    const my = 100;
-    const scaleH = head * 4.5;
-    const scaleV = hh * 10;
+    const my = 90;
+    const scaleH = head * 4.6;
+    const scaleV = headLen * 11;
+    const neckW = neck * 3.2;
+    const neckH = neckLen * 6;
 
     const profilePath = `
         M ${mx} ${my}
         c ${scaleH * 0.15} ${-scaleV * 0.05} ${scaleH * 0.35} ${scaleV * 0.02} ${scaleH * 0.45} ${scaleV * 0.15}
         c ${scaleH * 0.08} ${scaleV * 0.15} ${scaleH * 0.05} ${scaleV * 0.4} 0 ${scaleV * 0.55}
-        c ${-scaleH * 0.1} ${scaleV * 0.25} ${-scaleH * 0.3} ${scaleV * 0.25} ${-scaleH * 0.45} ${scaleV * 0.2}
-        C ${mx - 40} ${my + scaleV * 0.6} ${mx} ${my + scaleV * 0.3} ${mx} ${my}
+        l ${-neckW * 0.3} ${neckH}
+        h ${-neckW * 0.7}
+        l ${neckW * 0.2} ${-neckH}
+        C ${mx - 30} ${my + scaleV * 0.6} ${mx} ${my + scaleV * 0.3} ${mx} ${my}
         Z
         <!-- Ojos -->
-        M ${mx + scaleH * 0.2} ${my + scaleV * 0.3}
+        M ${mx + scaleH * 0.18} ${my + scaleV * 0.3}
         q 15 -10 30 0
         q -15 15 -30 0 Z
     `;
 
     return `
         <path d="${profilePath}" class="pattern-outline" />
-        <text x="${mx + 60}" y="${my + 120}" class="pattern-text-label">MÁSCARA LATERAL</text>
+
+        <!-- Acotaciones de Medidas de Precisión -->
+        ${drawDimensionCallout(mx, my - 15, mx + scaleH * 0.45, my - 15, `Cabeza: ${(head).toFixed(1)}cm`)}
+        ${drawDimensionCallout(mx + scaleH * 0.45, my, mx + scaleH * 0.45, my + scaleV * 0.7, `Alto Cabeza: ${(headLen).toFixed(1)}cm`)}
+
+        <text x="${mx + 60}" y="${my + 130}" class="pattern-text-label">MÁSCARA PERFIL</text>
+        <text x="${mx + 60}" y="${my + 148}" class="pattern-text-desc">Cortar 2x (Cuello: ${(neck).toFixed(0)}cm, Largo: ${(neckLen).toFixed(1)}cm)</text>
     `;
 }
 
-// 2D CAD: GUANTES
+// 2D CAD: GUANTES (Mano y Brazo)
 function drawGlovesPattern(m, seam) {
     const wrist = m.wristCircum || 16;
+    const forearm = m.forearmCircum || 22;
+    const elbow = m.elbowCircum || 24;
+    const bicep = m.upperArm || 28;
     const hand = m.handLength || 18;
+    const armLen = m.armLength || 56;
 
     const gx = 250;
-    const gy = 100;
-    const wHalf = wrist * 8.0;
-    const fLen = hand * 12;
+    const gy = 80;
+    const wWidth = wrist * 6.5;
+    const fWidth = forearm * 7.2;
+    const eWidth = elbow * 7.8;
+    const bWidth = bicep * 8.5;
+    const fLen = hand * 11;
+    const armH = armLen * 4.5;
 
     const glovePath = `
-        M ${gx} ${gy + fLen + 40}
-        h ${wHalf}
-        v ${-fLen * 0.7}
+        M ${gx} ${gy + fLen + armH}
+        h ${bWidth}
+        l ${-(bWidth - eWidth)*0.5} ${-armH * 0.3}
+        l ${-(eWidth - fWidth)*0.5} ${-armH * 0.4}
+        l ${-(fWidth - wWidth)*0.5} ${-armH * 0.3}
         c 0 -30 20 -30 20 -60
         v ${-fLen}
-        h -25
+        h -22
         v ${fLen * 0.8}
-        h -10
+        h -8
         v ${-fLen * 1.1}
-        h -25
+        h -22
         v ${fLen * 1.1}
-        h -10
+        h -8
         v ${-fLen * 1.0}
-        h -25
+        h -22
         v ${fLen * 1.0}
-        h -10
+        h -8
         v ${-fLen * 0.8}
-        h -25
+        h -22
         Z
     `;
 
     return `
         <path d="${glovePath}" class="pattern-outline" />
-        <text x="${gx + wHalf/2}" y="${gy + fLen + 90}" class="pattern-text-label">GUANTE</text>
+
+        <!-- Acotaciones de Medidas de Precisión -->
+        ${drawDimensionCallout(gx, gy + fLen + armH + 15, gx + bWidth, gy + fLen + armH + 15, `Bíceps: ${(bicep).toFixed(1)}cm`)}
+        ${drawDimensionCallout(gx + (bWidth - wWidth)*0.5, gy + fLen - 15, gx + (bWidth + wWidth)*0.5, gy + fLen - 15, `Muñeca: ${(wrist).toFixed(1)}cm`)}
+
+        <text x="${gx + bWidth/2}" y="${gy + fLen + armH*0.5}" class="pattern-text-label">GUANTE LARGO</text>
+        <text x="${gx + bWidth/2}" y="${gy + fLen + armH*0.5 + 18}" class="pattern-text-desc">Cortar 2x (Mano: ${(hand).toFixed(1)}cm, Brazo: ${(armLen).toFixed(0)}cm)</text>
     `;
 }
 
-// 2D CAD: MEDIAS
+// 2D CAD: MEDIAS (Pierna y Pie)
 function drawStockingsPattern(m, seam) {
     const ankle = m.ankleCircum || 22;
     const calf = m.shankCircum || 34;
+    const knee = m.kneeCircum || 36;
     const thigh = m.thighCircum || 54;
-    const len = m.legLength || 72;
+    const foot = m.footLength || 24;
+    const leg = m.legLength || 72;
+    const kneeToAnkle = m.kneeToAnkle || 38;
 
-    const sx = 280;
-    const sy = 80;
+    const sx = 260;
+    const sy = 60;
     const aHalf = ankle * 3.5;
-    const cHalf = calf * 3.5;
-    const tHalf = thigh * 3.5;
-    const hVisual = len * 6;
+    const cHalf = calf * 3.8;
+    const kHalf = knee * 4.2;
+    const tHalf = thigh * 4.8;
+    const footH = foot * 4.0;
+    const hVisual = leg * 5.5;
+    const kaVisual = kneeToAnkle * 3.5;
 
     const stockingPath = `
         M ${sx} ${sy}
         h ${tHalf}
-        l ${-(tHalf - cHalf) * 0.5} ${hVisual * 0.4}
-        l ${-(cHalf - aHalf) * 0.5} ${hVisual * 0.6}
-        v 40
-        h ${-aHalf}
-        v -40
-        l ${-(cHalf - aHalf) * 0.5} ${-hVisual * 0.6}
+        l ${-(tHalf - kHalf) * 0.5} ${hVisual - kaVisual}
+        l ${-(kHalf - cHalf) * 0.5} ${kaVisual * 0.4}
+        l ${-(cHalf - aHalf) * 0.5} ${kaVisual * 0.6}
+        l ${footH * 0.4} ${footH * 0.3}
+        h ${-footH}
+        v -30
+        l ${-(cHalf - aHalf) * 0.5} ${-kaVisual * 0.6}
+        l ${-(kHalf - cHalf) * 0.5} ${-kaVisual * 0.4}
         Z
     `;
 
     return `
         <path d="${stockingPath}" class="pattern-outline" />
-        <text x="${sx + tHalf/2}" y="${sy + hVisual/2}" class="pattern-text-label">MEDIA</text>
+
+        <!-- Acotaciones de Medidas de Precisión -->
+        ${drawDimensionCallout(sx, sy - 15, sx + tHalf, sy - 15, `Muslo: ${(thigh).toFixed(1)}cm`)}
+        ${drawDimensionCallout(sx, sy + (hVisual - kaVisual), sx + kHalf, sy + (hVisual - kaVisual), `Rodilla: ${(knee).toFixed(1)}cm`)}
+        ${drawDimensionCallout(sx, sy + hVisual, sx + aHalf, sy + hVisual, `Tobillo: ${(ankle).toFixed(1)}cm`)}
+
+        <text x="${sx + tHalf/2}" y="${sy + hVisual * 0.4}" class="pattern-text-label">MEDIA ALTA</text>
+        <text x="${sx + tHalf/2}" y="${sy + hVisual * 0.4 + 18}" class="pattern-text-desc">Cortar 2x (Pie: ${(foot).toFixed(1)}cm, Pierna: ${(leg).toFixed(0)}cm)</text>
     `;
 }
 
