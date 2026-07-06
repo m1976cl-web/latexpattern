@@ -72,9 +72,12 @@ let state = {
     startY: 0,
     showGrid: true,
     viewMode: "pattern", // "pattern" or "3d-sim"
-    renderMode: "vector", // "vector" or "real"
+    renderMode: "vector", // "vector", "real", or "webgl"
     rotationAngle: 35, // Ángulo 3D por defecto
-    currentColor: "black" // Color de filtro de látex fotorrealista
+    currentColor: "black", // Color principal de látex
+    secondaryColor: "black", // Color secundario de contraste
+    zipperType: "front", // "none", "front", "back", "crotch"
+    currentClient: null
 };
 
 // 4. ELEMENTOS DEL DOM
@@ -533,10 +536,24 @@ function setupEventHandlers() {
     });
 
     // Sim mode toggles
-    document.getElementById("sim-mode-vector").addEventListener("click", () => setSimMode("vector"));
-    document.getElementById("sim-mode-real").addEventListener("click", () => setSimMode("real"));
+    document.getElementById("sim-mode-vector")?.addEventListener("click", () => setSimMode("vector"));
+    document.getElementById("sim-mode-real")?.addEventListener("click", () => setSimMode("real"));
+    document.getElementById("sim-mode-webgl")?.addEventListener("click", () => setSimMode("webgl"));
 
-    // Gender toggle buttons (already added)
+    // Personalización y Cierres
+    document.getElementById("zipper-type")?.addEventListener("change", (e) => {
+        state.zipperType = e.target.value;
+        drawPattern();
+        draw3DMannequin();
+    });
+
+    document.getElementById("secondary-color")?.addEventListener("change", (e) => {
+        state.secondaryColor = e.target.value;
+        drawPattern();
+        draw3DMannequin();
+    });
+
+    // Gender toggle buttons
     document.getElementById("gender-female").addEventListener("click", () => setActiveGender("female"));
     document.getElementById("gender-male").addEventListener("click", () => setActiveGender("male"));
 
@@ -572,6 +589,20 @@ function setupEventHandlers() {
         state.seamAllowance = parseInt(e.target.value);
         seamVal.textContent = state.seamAllowance + " mm";
         drawPattern();
+    });
+
+    // Gestor de Clientes (LocalStorage)
+    initClientManager();
+
+    // Modal de Consumo & Costes
+    document.getElementById("btn-open-cost-modal")?.addEventListener("click", openCostModal);
+    document.getElementById("btn-close-cost-modal")?.addEventListener("click", closeCostModal);
+    document.getElementById("cost-modal-backdrop")?.addEventListener("click", (e) => {
+        if (e.target.id === "cost-modal-backdrop") closeCostModal();
+    });
+
+    ["price-per-meter", "roll-width", "glue-cost", "labor-hours", "hourly-rate"].forEach(id => {
+        document.getElementById(id)?.addEventListener("input", updateCostCalculator);
     });
 
     // Manual tabs
@@ -629,6 +660,7 @@ function setupEventHandlers() {
     document.getElementById("btn-export-pdf")?.addEventListener("click", exportPDFPattern);
     document.getElementById("btn-export-dxf")?.addEventListener("click", exportDXFPattern);
     document.getElementById("btn-export-png")?.addEventListener("click", exportPNGPattern);
+    document.getElementById("btn-export-techpack")?.addEventListener("click", exportTechPackPDF);
     document.getElementById("btn-export-json")?.addEventListener("click", exportJSONProfile);
     
     const btnImportJson = document.getElementById("btn-import-json");
@@ -745,21 +777,31 @@ function setSimMode(mode) {
     state.renderMode = mode;
     const vectorBtn = document.getElementById("sim-mode-vector");
     const realBtn = document.getElementById("sim-mode-real");
+    const webglBtn = document.getElementById("sim-mode-webgl");
     const realContainer = document.getElementById("sim-real-image-container");
+    const webglContainer = document.getElementById("sim-webgl-canvas-container");
     
+    [vectorBtn, realBtn, webglBtn].forEach(b => b?.classList.remove("active"));
+
     if (mode === "vector") {
-        vectorBtn.classList.add("active");
-        realBtn.classList.remove("active");
+        vectorBtn?.classList.add("active");
         sim3dCanvasContainer.classList.remove("hidden");
-        realContainer.classList.add("hidden");
-    } else {
-        realBtn.classList.add("active");
-        vectorBtn.classList.remove("active");
+        realContainer?.classList.add("hidden");
+        webglContainer?.classList.add("hidden");
+        draw3DMannequin();
+    } else if (mode === "real") {
+        realBtn?.classList.add("active");
         sim3dCanvasContainer.classList.add("hidden");
-        realContainer.classList.remove("hidden");
+        webglContainer?.classList.add("hidden");
+        realContainer?.classList.remove("hidden");
         renderPhotorealisticView(true);
+    } else if (mode === "webgl") {
+        webglBtn?.classList.add("active");
+        sim3dCanvasContainer.classList.add("hidden");
+        realContainer?.classList.add("hidden");
+        webglContainer?.classList.remove("hidden");
+        renderThreeJSView();
     }
-    draw3DMannequin();
 }
 
 function renderPhotorealisticView(force = false) {
@@ -2449,4 +2491,361 @@ function importJSONProfile(event) {
         }
     };
     reader.readAsText(file);
+}
+
+// 18. GESTOR DE CLIENTES EN LOCALSTORAGE
+function initClientManager() {
+    const clientSelect = document.getElementById("client-select");
+    const btnSave = document.getElementById("btn-save-client");
+    const btnDelete = document.getElementById("btn-delete-client");
+
+    if (!clientSelect) return;
+
+    loadClientsFromStorage();
+
+    clientSelect.addEventListener("change", (e) => {
+        const clientName = e.target.value;
+        if (!clientName) return;
+
+        const clients = getStoredClients();
+        const clientData = clients[clientName];
+        if (clientData) {
+            state = { ...state, ...clientData.state };
+            state.currentClient = clientName;
+
+            if (latexThicknessInput) latexThicknessInput.value = state.thickness;
+            if (thicknessVal) thicknessVal.textContent = state.thickness.toFixed(2) + " mm";
+            if (tensionLevelSelect) tensionLevelSelect.value = state.tension;
+            if (seamAllowanceInput) seamAllowanceInput.value = state.seamAllowance;
+            if (seamVal) seamVal.textContent = state.seamAllowance + " mm";
+            if (sizePresetSelect) sizePresetSelect.value = state.sizePreset;
+
+            document.querySelectorAll(".garment-btn").forEach(btn => {
+                if (btn.dataset.garment === state.garment) btn.classList.add("active");
+                else btn.classList.remove("active");
+            });
+
+            setActiveGender(state.gender);
+            renderMeasuresTable();
+            drawPattern();
+            draw3DMannequin();
+            updateCutList();
+        }
+    });
+
+    btnSave?.addEventListener("click", () => {
+        const defaultName = state.currentClient || `Cliente ${new Date().toLocaleDateString('es-ES')}`;
+        const clientName = prompt("Ingresa el nombre del cliente para guardar el perfil:", defaultName);
+        if (!clientName) return;
+
+        const clients = getStoredClients();
+        clients[clientName] = {
+            name: clientName,
+            updatedAt: new Date().toISOString(),
+            state: { ...state, currentClient: clientName }
+        };
+
+        localStorage.setItem("latexTailor_clients", JSON.stringify(clients));
+        state.currentClient = clientName;
+        loadClientsFromStorage();
+        clientSelect.value = clientName;
+        alert(`¡Perfil de '${clientName}' guardado con éxito!`);
+    });
+
+    btnDelete?.addEventListener("click", () => {
+        const clientName = clientSelect.value;
+        if (!clientName) {
+            alert("Por favor selecciona un cliente de la lista para eliminar.");
+            return;
+        }
+
+        if (confirm(`¿Estás seguro de que deseas eliminar el cliente '${clientName}'?`)) {
+            const clients = getStoredClients();
+            delete clients[clientName];
+            localStorage.setItem("latexTailor_clients", JSON.stringify(clients));
+            state.currentClient = null;
+            loadClientsFromStorage();
+            alert(`Cliente '${clientName}' eliminado.`);
+        }
+    });
+}
+
+function getStoredClients() {
+    try {
+        return JSON.parse(localStorage.getItem("latexTailor_clients")) || {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function loadClientsFromStorage() {
+    const clientSelect = document.getElementById("client-select");
+    if (!clientSelect) return;
+
+    const clients = getStoredClients();
+    clientSelect.innerHTML = `<option value="">— Seleccionar Cliente —</option>`;
+
+    for (let key in clients) {
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = `${key} (${new Date(clients[key].updatedAt).toLocaleDateString()})`;
+        if (state.currentClient === key) opt.selected = true;
+        clientSelect.appendChild(opt);
+    }
+}
+
+// 19. CALCULADORA DE CONSUMO, COSTES Y ANIDADO DE CORTE
+function openCostModal() {
+    const backdrop = document.getElementById("cost-modal-backdrop");
+    if (backdrop) {
+        backdrop.classList.remove("hidden");
+        updateCostCalculator();
+    }
+}
+
+function closeCostModal() {
+    const backdrop = document.getElementById("cost-modal-backdrop");
+    if (backdrop) backdrop.classList.add("hidden");
+}
+
+function updateCostCalculator() {
+    const pricePerMeter = parseFloat(document.getElementById("price-per-meter")?.value || 28);
+    const rollWidthMM = parseFloat(document.getElementById("roll-width")?.value || 1200);
+    const glueCost = parseFloat(document.getElementById("glue-cost")?.value || 12.5);
+    const laborHours = parseFloat(document.getElementById("labor-hours")?.value || 4.5);
+    const hourlyRate = parseFloat(document.getElementById("hourly-rate")?.value || 25);
+
+    let estSurfaceArea = 0.45;
+    if (state.garment === "catsuit") estSurfaceArea = 1.35;
+    else if (state.garment === "leggings" || state.garment === "skirt") estSurfaceArea = 0.75;
+    else if (state.garment === "corset") estSurfaceArea = 0.35;
+    else if (state.garment === "gloves" || state.garment === "mask" || state.garment === "stockings") estSurfaceArea = 0.28;
+
+    const rollWidthM = rollWidthMM / 1000;
+    const requiredLinearMeters = (estSurfaceArea / (rollWidthM * 0.85));
+    const efficiencyPercent = 84.5;
+
+    const latexMaterialCost = requiredLinearMeters * pricePerMeter;
+    const laborCost = laborHours * hourlyRate;
+    const totalCost = latexMaterialCost + glueCost + laborCost;
+    const pvpCost = totalCost * 2.5;
+
+    if (document.getElementById("metric-surface-area")) document.getElementById("metric-surface-area").textContent = `${estSurfaceArea.toFixed(2)} m²`;
+    if (document.getElementById("metric-linear-meters")) document.getElementById("metric-linear-meters").textContent = `${requiredLinearMeters.toFixed(2)} m`;
+    if (document.getElementById("metric-efficiency")) document.getElementById("metric-efficiency").textContent = `${efficiencyPercent.toFixed(1)}%`;
+    if (document.getElementById("metric-latex-cost")) document.getElementById("metric-latex-cost").textContent = `${latexMaterialCost.toFixed(2)} €`;
+    if (document.getElementById("metric-labor-cost")) document.getElementById("metric-labor-cost").textContent = `${laborCost.toFixed(2)} €`;
+    if (document.getElementById("metric-total-cost")) document.getElementById("metric-total-cost").textContent = `${totalCost.toFixed(2)} €`;
+    if (document.getElementById("metric-pvp-cost")) document.getElementById("metric-pvp-cost").textContent = `${pvpCost.toFixed(2)} €`;
+
+    renderNestingCanvas(rollWidthMM, requiredLinearMeters);
+}
+
+function renderNestingCanvas(rollWidthMM, linearMeters) {
+    const nestingContainer = document.getElementById("nesting-canvas-container");
+    if (!nestingContainer) return;
+
+    const rawSvg = canvasContainer.querySelector("svg");
+    if (!rawSvg) return;
+
+    const patternClone = rawSvg.querySelector("g#transform-group")?.cloneNode(true);
+    if (!patternClone) return;
+
+    patternClone.removeAttribute("transform");
+
+    const nestingSvg = `
+        <svg width="100%" height="100%" viewBox="0 0 1000 240" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1000" height="240" fill="#08080c" />
+            <rect x="20" y="20" width="960" height="200" fill="rgba(255,42,133,0.06)" stroke="var(--accent-pink)" stroke-width="1.5" stroke-dasharray="8,4" />
+            <text x="30" y="40" fill="var(--accent-pink)" font-size="11" font-weight="bold">ROLLO DE LÁTEX (${rollWidthMM}mm x ${(linearMeters * 1000).toFixed(0)}mm)</text>
+            <g transform="translate(40, 40) scale(0.24)">
+                ${patternClone.innerHTML}
+            </g>
+        </svg>
+    `;
+
+    nestingContainer.innerHTML = nestingSvg;
+}
+
+// 20. GENERADOR DE FICHA TÉCNICA INDUSTRIAL (TECH PACK PDF)
+function exportTechPackPDF() {
+    const printWindow = window.open("", "_blank", "width=950,height=1100");
+    if (!printWindow) {
+        alert("Por favor, permite ventanas emergentes (popups) para generar el Tech Pack PDF.");
+        return;
+    }
+
+    const rawSvg = canvasContainer.querySelector("svg");
+    const patternGroupClone = rawSvg ? rawSvg.querySelector("g#transform-group").cloneNode(true) : null;
+    if (patternGroupClone) patternGroupClone.removeAttribute("transform");
+
+    const clientName = state.currentClient || "ESTÁNDAR";
+    const dateStr = new Date().toLocaleDateString('es-ES');
+
+    let measuresRowsHtml = "";
+    MEASUREMENTS_DEF.forEach(def => {
+        const val = state.measurements[def.key];
+        measuresRowsHtml += `<tr><td style="padding:4px; border:1px solid #ccc; font-weight:bold;">#${def.id} ${def.label}</td><td style="padding:4px; border:1px solid #ccc; text-align:center;">${val} ${def.unit}</td></tr>`;
+    });
+
+    const techPackHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Tech Pack Industrial — LatexTailor (${state.garment.toUpperCase()})</title>
+    <style>
+        @page { size: A4 portrait; margin: 12mm; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #111; font-size: 11px; }
+        .tp-header { display: flex; justify-content: space-between; border-bottom: 3px solid #ff2a85; padding-bottom: 8px; margin-bottom: 15px; }
+        .tp-title { font-size: 20px; font-weight: bold; color: #ff2a85; }
+        .tp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .tp-box { border: 1px solid #ccc; padding: 10px; border-radius: 6px; background: #fafafa; }
+        .tp-box h4 { margin: 0 0 8px 0; color: #000; font-size: 12px; border-bottom: 1px stroke #ddd; padding-bottom: 4px; }
+        table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        .pattern-outline { fill: none; stroke: #ff2a85; stroke-width: 2; }
+        .seam-allowance-outline { fill: none; stroke: #0088cc; stroke-width: 1; stroke-dasharray: 4,4; }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="padding: 12px; background: #111; color: #fff; text-align: center; margin-bottom: 15px;">
+        <button onclick="window.print()" style="padding: 8px 18px; font-size: 14px; background: #ff2a85; color: #fff; border: none; cursor: pointer; font-weight: bold; border-radius: 4px;">🖨️ IMPRIMIR FICHA TÉCNICA (TECH PACK PDF)</button>
+    </div>
+
+    <div class="tp-header">
+        <div>
+            <div class="tp-title">LATEXTAILOR — FICHA TÉCNICA INDUSTRIAL</div>
+            <div>ESPECIFICACIÓN DE PRODUCCIÓN Y PATRONAJE</div>
+        </div>
+        <div style="text-align: right;">
+            <div><strong>CLIENTE:</strong> ${clientName}</div>
+            <div><strong>FECHA:</strong> ${dateStr}</div>
+            <div><strong>PRENDA:</strong> ${state.garment.toUpperCase()} (${state.gender.toUpperCase()})</div>
+        </div>
+    </div>
+
+    <div class="tp-grid">
+        <div class="tp-box">
+            <h4>📋 Ficha Antropométrica (28 Puntos)</h4>
+            <table>
+                <tbody>
+                    ${measuresRowsHtml}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="tp-box">
+            <h4>💧 Parámetros de Material y Confección</h4>
+            <p><strong>Grosor Látex:</strong> ${state.thickness.toFixed(2)} mm</p>
+            <p><strong>Ajuste Tensión:</strong> ${state.tension.toUpperCase()} (Factor Reducción: ${(getReductionFactor()*100).toFixed(1)}%)</p>
+            <p><strong>Solape Costura:</strong> ${state.seamAllowance} mm</p>
+            <p><strong>Tipo de Cierre:</strong> ${state.zipperType.toUpperCase()}</p>
+            <p><strong>Color Principal:</strong> ${state.currentColor.toUpperCase()}</p>
+            <p><strong>Color Contraste:</strong> ${state.secondaryColor.toUpperCase()}</p>
+            <hr>
+            <h4>📐 Esquema Vectorial 2D</h4>
+            <div style="width: 100%; height: 260px; border: 1px solid #ddd; background: #fff;">
+                <svg width="100%" height="100%" viewBox="0 0 900 650">
+                    ${patternGroupClone ? patternGroupClone.innerHTML : ''}
+                </svg>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    printWindow.document.write(techPackHtml);
+    printWindow.document.close();
+}
+
+// 21. RENDERIZADOR 3D WEBGL REAL (THREE.JS SHADER PBR DE LÁTEX)
+let threeScene, threeCamera, threeRenderer, threeMesh;
+
+function renderThreeJSView() {
+    const container = document.getElementById("sim-webgl-canvas-container");
+    if (!container || typeof THREE === "undefined") return;
+
+    if (!threeRenderer) {
+        threeScene = new THREE.Scene();
+        threeScene.background = new THREE.Color(0x060609);
+
+        const aspect = (container.clientWidth || 400) / (container.clientHeight || 500);
+        threeCamera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+        threeCamera.position.set(0, 0, 180);
+
+        threeRenderer = new THREE.WebGLRenderer({ antialias: true });
+        threeRenderer.setSize(container.clientWidth || 400, container.clientHeight || 500);
+        threeRenderer.setPixelRatio(window.devicePixelRatio || 1);
+        container.innerHTML = "";
+        container.appendChild(threeRenderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        threeScene.add(ambientLight);
+
+        const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight1.position.set(100, 100, 100);
+        threeScene.add(dirLight1);
+
+        const dirLight2 = new THREE.DirectionalLight(0xff2a85, 0.8);
+        dirLight2.position.set(-100, -50, -50);
+        threeScene.add(dirLight2);
+    }
+
+    const colorMap = {
+        black: 0x111116,
+        pink: 0xff2a85,
+        cyan: 0x00f0ff,
+        red: 0xe60000,
+        gold: 0xd4af37,
+        purple: 0x8a2be2
+    };
+
+    const latexMaterial = new THREE.MeshPhysicalMaterial({
+        color: colorMap[state.currentColor] || 0x111116,
+        roughness: 0.08,
+        metalness: 0.1,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.05,
+        reflectivity: 0.9
+    });
+
+    if (threeMesh) threeScene.remove(threeMesh);
+
+    const bodyGroup = new THREE.Group();
+    const isFemale = state.gender === "female";
+
+    const bustRad = (state.measurements.bustCircum || 90) * 0.12;
+    const waistRad = (state.measurements.waistCircum || 68) * 0.10;
+    const hipRad = (state.measurements.hipCircum || 95) * 0.13;
+
+    const torsoGeo = new THREE.CylinderGeometry(bustRad, waistRad, 40, 32);
+    const torsoMesh = new THREE.Mesh(torsoGeo, latexMaterial);
+    torsoMesh.position.y = 15;
+    bodyGroup.add(torsoMesh);
+
+    const hipGeo = new THREE.CylinderGeometry(waistRad, hipRad, 25, 32);
+    const hipMesh = new THREE.Mesh(hipGeo, latexMaterial);
+    hipMesh.position.y = -15;
+    bodyGroup.add(hipMesh);
+
+    if (isFemale) {
+        const breastGeo = new THREE.SphereGeometry(bustRad * 0.45, 16, 16);
+        const breastL = new THREE.Mesh(breastGeo, latexMaterial);
+        breastL.position.set(-bustRad * 0.4, 20, bustRad * 0.8);
+        const breastR = new THREE.Mesh(breastGeo, latexMaterial);
+        breastR.position.set(bustRad * 0.4, 20, bustRad * 0.8);
+        bodyGroup.add(breastL, breastR);
+    }
+
+    const legGeo = new THREE.CylinderGeometry(hipRad * 0.45, hipRad * 0.25, 60, 16);
+    const legL = new THREE.Mesh(legGeo, latexMaterial);
+    legL.position.set(-hipRad * 0.4, -55, 0);
+    const legR = new THREE.Mesh(legGeo, latexMaterial);
+    legR.position.set(hipRad * 0.4, -55, 0);
+    bodyGroup.add(legL, legR);
+
+    threeMesh = bodyGroup;
+    threeScene.add(threeMesh);
+
+    threeMesh.rotation.y = (state.rotationAngle * Math.PI) / 180;
+    threeRenderer.render(threeScene, threeCamera);
 }

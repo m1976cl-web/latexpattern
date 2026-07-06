@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Three.js CDN para Renderizado WebGL 3D Real -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- CSS Estilos -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -21,10 +23,23 @@
                 <span class="logo-shiny"></span>
                 <span class="logo-text">LATEX<span class="highlight">TAILOR</span></span>
             </div>
-            <div class="tagline">Diseñador Profesional de Látex • Patrones 1:1 y Maniquí Virtual 360°</div>
+            <div class="tagline">Diseñador Profesional de Látex • Patrones 1:1, Costes y WebGL 3D</div>
+            
+            <!-- GESTOR DE CLIENTES Y COSTES -->
+            <div class="header-tools">
+                <div class="client-manager-box">
+                    <select id="client-select">
+                        <option value="">— Seleccionar Cliente —</option>
+                    </select>
+                    <button class="header-btn" id="btn-save-client" title="Guardar Cliente Actual">💾 Guardar</button>
+                    <button class="header-btn danger-btn" id="btn-delete-client" title="Eliminar Cliente">🗑️</button>
+                </div>
+                <button class="header-btn highlight-header-btn" id="btn-open-cost-modal">📊 Consumo & Costes</button>
+            </div>
+
             <div class="header-badges">
-                <span class="badge badge-premium">INTERACTIVE 3D</span>
-                <span class="badge badge-version">v2.0.0</span>
+                <span class="badge badge-premium">WEBGL 3D REAL</span>
+                <span class="badge badge-version">v3.0.0</span>
             </div>
         </div>
     </header>
@@ -158,6 +173,31 @@
                             <span id="reduction-total-badge" class="badge badge-reduction">-8.0%</span>
                         </div>
                     </div>
+
+                    <!-- 4. Personalización Bicolor y Cierres -->
+                    <div class="control-group bg-dark-card">
+                        <label class="group-title text-pink">🎨 Personalización y Cierres</label>
+                        <div class="select-wrapper">
+                            <label for="zipper-type">Tipo de Cierre / Cremallera:</label>
+                            <select id="zipper-type">
+                                <option value="none">Sin Cierre (Tirón Estándar)</option>
+                                <option value="front" selected>Cremallera Delantera</option>
+                                <option value="back">Cremallera Trasera</option>
+                                <option value="crotch">Cremallera Pasante Entrepierna (3 Carros)</option>
+                            </select>
+                        </div>
+                        <div class="select-wrapper mt-2">
+                            <label for="secondary-color">Color Secundario (Paneles Contraste):</label>
+                            <select id="secondary-color">
+                                <option value="black" selected>Negro Brillo</option>
+                                <option value="pink">Rosa Neón</option>
+                                <option value="cyan">Azul Cyan</option>
+                                <option value="red">Rojo Pasión</option>
+                                <option value="gold">Dorado Metalizado</option>
+                                <option value="purple">Púrpura Vinilo</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </aside>
 
@@ -209,9 +249,10 @@
                             <button class="action-btn highlight-btn" id="btn-export">📥 Exportar ▾</button>
                             <div class="export-dropdown-menu hidden" id="export-dropdown">
                                 <button class="export-opt-btn" id="btn-export-svg">📐 SVG Vectorial 1:1</button>
-                                <button class="export-opt-btn" id="btn-export-pdf">📄 PDF Imprimible (A4 Tiled)</button>
+                                <button class="export-opt-btn" id="btn-export-pdf">📄 PDF Imprimible (Escala 1:1)</button>
                                 <button class="export-opt-btn" id="btn-export-dxf">🏗️ DXF Industrial CAD</button>
                                 <button class="export-opt-btn" id="btn-export-png">🖼️ Imagen PNG HD</button>
+                                <button class="export-opt-btn" id="btn-export-techpack">📋 Ficha Técnica (Tech Pack PDF)</button>
                                 <div class="dropdown-divider"></div>
                                 <button class="export-opt-btn" id="btn-export-json">💾 Guardar Perfil (JSON)</button>
                                 <button class="export-opt-btn" id="btn-import-json">📂 Cargar Perfil (JSON)</button>
@@ -230,8 +271,9 @@
                             <button class="color-chip" data-color="purple" style="background: #8a2be2;" title="Púrpura Vinilo"></button>
                         </div>
                         <div class="toggle-buttons mini-toggle" style="margin-right: 0.5rem;">
-                            <button class="toggle-btn active" id="sim-mode-vector" data-mode="vector" style="padding: 0.2rem 0.6rem; font-size: 0.72rem;">Vectorial 3D</button>
-                            <button class="toggle-btn" id="sim-mode-real" data-mode="real" style="padding: 0.2rem 0.6rem; font-size: 0.72rem;">Fotorrealista</button>
+                            <button class="toggle-btn active" id="sim-mode-vector" data-mode="vector" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Vector 3D</button>
+                            <button class="toggle-btn" id="sim-mode-real" data-mode="real" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Foto</button>
+                            <button class="toggle-btn" id="sim-mode-webgl" data-mode="webgl" style="padding: 0.2rem 0.5rem; font-size: 0.7rem; color: var(--accent-cyan);">WebGL 3D</button>
                         </div>
                         <span class="sim-badge">AUTO-SHINE LÁTEX</span>
                     </div>
@@ -262,6 +304,10 @@
                         <!-- Visor Fotorrealista Oculto por defecto -->
                         <div class="sim-real-container hidden" id="sim-real-image-container">
                             <!-- La imagen fotorrealista se inyectará aquí -->
+                        </div>
+                        <!-- Visor WebGL 3D Real (Three.js Shader PBR) -->
+                        <div class="sim-webgl-container hidden" id="sim-webgl-canvas-container">
+                            <!-- Canvas Three.js WebGL -->
                         </div>
                         <!-- Control deslizante de rotación de 360 grados -->
                         <div class="rotation-bar-wrapper">
@@ -395,13 +441,88 @@
         </section>
     </main>
 
-    <!-- PIE DE PÁGINA -->
-    <footer class="app-footer-bar">
-        <div class="footer-container">
-            <p>&copy; 2026 LatexTailor. Diseñado para patronaje industrial y artesanal de alta precisión.</p>
-            <p class="footer-warning">Nota de Seguridad: Utilice disolventes volátiles siempre en ambientes altamente ventilados y alejados de fuentes de ignición.</p>
+    <!-- MODAL DE CONSUMO, COSTES Y ANIDADO DE CORTE -->
+    <div class="modal-backdrop hidden" id="cost-modal-backdrop">
+        <div class="modal-card glass">
+            <div class="modal-header">
+                <h3>📊 Calculadora de Consumo de Látex, Costes y Anidado de Corte</h3>
+                <button class="modal-close-btn" id="btn-close-cost-modal">✕</button>
+            </div>
+            <div class="modal-body scrollable">
+                <div class="cost-grid">
+                    <!-- Columna 1: Parámetros Económicos -->
+                    <div class="cost-inputs bg-dark-card">
+                        <h4>💰 Parámetros de Precio</h4>
+                        <div class="input-field mt-2">
+                            <label for="price-per-meter">Precio Látex por Metro Lineal (€/$):</label>
+                            <input type="number" id="price-per-meter" value="28.00" step="1.00">
+                        </div>
+                        <div class="input-field mt-2">
+                            <label for="roll-width">Ancho de la Plancha de Látex:</label>
+                            <select id="roll-width">
+                                <option value="1000">1000 mm (1.0 metro)</option>
+                                <option value="1200" selected>1200 mm (1.2 metros)</option>
+                            </select>
+                        </div>
+                        <div class="input-field mt-2">
+                            <label for="glue-cost">Insumos (Pegamento / Heptano / Cierre €/$):</label>
+                            <input type="number" id="glue-cost" value="12.50" step="0.50">
+                        </div>
+                        <div class="input-field mt-2">
+                            <label for="labor-hours">Horas de Mano de Obra Estimadas:</label>
+                            <input type="number" id="labor-hours" value="4.5" step="0.5">
+                        </div>
+                        <div class="input-field mt-2">
+                            <label for="hourly-rate">Precio por Hora de Confección (€/$):</label>
+                            <input type="number" id="hourly-rate" value="25.00" step="1.00">
+                        </div>
+                    </div>
+
+                    <!-- Columna 2: Resultados del Cálculo -->
+                    <div class="cost-summary bg-dark-card">
+                        <h4>📐 Resumen de Materiales y Coste</h4>
+                        <div class="summary-metric">
+                            <span>Superficie Total Patrón:</span>
+                            <strong id="metric-surface-area">0.48 m²</strong>
+                        </div>
+                        <div class="summary-metric">
+                            <span>Metros Lineales Requeridos:</span>
+                            <strong id="metric-linear-meters">0.65 m</strong>
+                        </div>
+                        <div class="summary-metric">
+                            <span>Aprovechamiento de Lámina:</span>
+                            <strong id="metric-efficiency" class="text-cyan">84.2%</strong>
+                        </div>
+                        <hr class="dropdown-divider">
+                        <div class="summary-metric highlight-metric">
+                            <span>Coste Material Látex:</span>
+                            <span id="metric-latex-cost">18.20 €</span>
+                        </div>
+                        <div class="summary-metric highlight-metric">
+                            <span>Coste Mano de Obra:</span>
+                            <span id="metric-labor-cost">112.50 €</span>
+                        </div>
+                        <div class="summary-metric total-metric">
+                            <span>PRECIO DE COSTO TOTAL:</span>
+                            <span id="metric-total-cost">143.20 €</span>
+                        </div>
+                        <div class="summary-metric total-metric text-pink mt-1">
+                            <span>PVP RECOMENDADO (x2.5):</span>
+                            <span id="metric-pvp-cost">358.00 €</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Anidado de Corte Gráfico (Nesting Layout Preview) -->
+                <div class="nesting-preview-box mt-3">
+                    <h4>✂️ Vista Previa de Anidado de Corte sobre Plancha de Látex</h4>
+                    <div class="nesting-canvas-container" id="nesting-canvas-container">
+                        <!-- El SVG de anidamiento se dibuja aquí -->
+                    </div>
+                </div>
+            </div>
         </div>
-    </footer>
+    </div>
 
     <!-- JavaScript Principal -->
     <script src="app.js"></script>
