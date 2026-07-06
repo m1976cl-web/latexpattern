@@ -77,7 +77,9 @@ let state = {
     currentColor: "black", // Color principal de látex
     secondaryColor: "black", // Color secundario de contraste
     zipperType: "front", // "none", "front", "back", "crotch"
-    currentClient: null
+    currentClient: null,
+    showHeatmap: false,
+    paperSize: "a4"
 };
 
 // 4. ELEMENTOS DEL DOM
@@ -641,6 +643,19 @@ function setupEventHandlers() {
         drawPattern();
     });
 
+    // Mapa de Tensiones (Heatmap)
+    document.getElementById("btn-toggle-heatmap")?.addEventListener("click", (e) => {
+        state.showHeatmap = !state.showHeatmap;
+        e.currentTarget.classList.toggle("active", state.showHeatmap);
+        draw3DMannequin();
+        if (state.renderMode === "webgl") renderThreeJSView();
+    });
+
+    // Selector de tamaño de papel PDF
+    document.getElementById("pdf-paper-size")?.addEventListener("change", (e) => {
+        state.paperSize = e.target.value;
+    });
+
     // Manejo de Menú Desplegable de Exportación
     const btnExport = document.getElementById("btn-export");
     const exportDropdown = document.getElementById("export-dropdown");
@@ -661,6 +676,7 @@ function setupEventHandlers() {
     document.getElementById("btn-export-dxf")?.addEventListener("click", exportDXFPattern);
     document.getElementById("btn-export-png")?.addEventListener("click", exportPNGPattern);
     document.getElementById("btn-export-techpack")?.addEventListener("click", exportTechPackPDF);
+    document.getElementById("btn-export-assembly-guide")?.addEventListener("click", exportAssemblyGuidePDF);
     document.getElementById("btn-export-json")?.addEventListener("click", exportJSONProfile);
     
     const btnImportJson = document.getElementById("btn-import-json");
@@ -2940,22 +2956,24 @@ function renderThreeJSView() {
         threeScene.add(dirLight2);
     }
 
-    const colorMap = {
-        black: 0x111116,
-        pink: 0xff2a85,
-        cyan: 0x00f0ff,
-        red: 0xe60000,
-        gold: 0xd4af37,
-        purple: 0x8a2be2
-    };
+    let matColor = colorMap[state.currentColor] || 0x111116;
+    let isHeatmap = state.showHeatmap;
+
+    if (isHeatmap) {
+        const factor = getReductionFactor();
+        if (factor <= 0.88) matColor = 0xff2a00; // Tensión Alta (Rojo)
+        else if (factor <= 0.93) matColor = 0xffcc00; // Tensión Media (Amarillo)
+        else matColor = 0x00f0ff; // Tensión Baja / Óptima (Cyan)
+    }
 
     const latexMaterial = new THREE.MeshPhysicalMaterial({
-        color: colorMap[state.currentColor] || 0x111116,
-        roughness: 0.08,
-        metalness: 0.1,
-        clearcoat: 1.0,
+        color: matColor,
+        roughness: isHeatmap ? 0.3 : 0.08,
+        metalness: isHeatmap ? 0.0 : 0.1,
+        clearcoat: isHeatmap ? 0.2 : 1.0,
         clearcoatRoughness: 0.05,
-        reflectivity: 0.9
+        reflectivity: 0.9,
+        wireframe: isHeatmap
     });
 
     if (threeMesh) threeScene.remove(threeMesh);
@@ -2998,4 +3016,84 @@ function renderThreeJSView() {
 
     threeMesh.rotation.y = (state.rotationAngle * Math.PI) / 180;
     threeRenderer.render(threeScene, threeCamera);
+}
+
+// 22. GENERADOR DE GUÍA DE ENSAMBLAJE PASO A PASO (PDF WORKSHOP GUIDE)
+function exportAssemblyGuidePDF() {
+    const printWindow = window.open("", "_blank", "width=950,height=1100");
+    if (!printWindow) {
+        alert("Por favor, permite ventanas emergentes para generar la Guía de Ensamblaje.");
+        return;
+    }
+
+    const garmentName = state.garment.toUpperCase();
+    const dateStr = new Date().toLocaleDateString('es-ES');
+
+    const guideHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <title>Guía de Ensamblaje en Taller — LatexTailor (${garmentName})</title>
+    <style>
+        @page { size: A4 portrait; margin: 15mm; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #111; font-size: 11px; line-height: 1.5; }
+        .header { border-bottom: 3px solid #ff2a85; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; }
+        .title { font-size: 22px; font-weight: bold; color: #ff2a85; }
+        .step-card { border: 1px solid #ddd; border-left: 5px solid #ff2a85; padding: 12px; margin-bottom: 15px; border-radius: 4px; background: #fcfcfc; }
+        .step-title { font-size: 14px; font-weight: bold; color: #111; margin-bottom: 6px; }
+        .warning { background: #fff3cd; border: 1px solid #ffeba2; padding: 8px; border-radius: 4px; color: #856404; margin-top: 6px; }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="padding: 12px; background: #111; color: #fff; text-align: center; margin-bottom: 20px;">
+        <button onclick="window.print()" style="padding: 8px 20px; font-size: 14px; background: #ff2a85; color: #fff; border: none; cursor: pointer; font-weight: bold; border-radius: 4px;">🖨️ IMPRIMIR GUÍA DE ENSAMBLAJE (PDF)</button>
+    </div>
+
+    <div class="header">
+        <div>
+            <div class="title">LATEXTAILOR — GUÍA DE CONFECCIÓN DE TALLER</div>
+            <div>SECUENCIA INDUSTRIAL DE ENSAMBLADO EN LÁTEX</div>
+        </div>
+        <div style="text-align: right;">
+            <div><strong>PRENDA:</strong> ${garmentName}</div>
+            <div><strong>FECHA:</strong> ${dateStr}</div>
+            <div><strong>SOLAPE:</strong> ${state.seamAllowance} mm</div>
+        </div>
+    </div>
+
+    <div class="step-card">
+        <div class="step-title">PASO 1: Desengrasado e Imprimación con Heptano 99%</div>
+        <p>Limpia meticulosamente todos los márgenes de costura solapada (${state.seamAllowance}mm) usando un paño de microfibra humedecido en Heptano puro o Alcohol Isopropílico. Esto elimina el talco de fábrica y aceites protectoras.</p>
+    </div>
+
+    <div class="step-card">
+        <div class="step-title">PASO 2: Encolado de Costuras Principales con Cemento de Caucho</div>
+        <p>Aplica una capa muy fina y uniforme de pegamento de contacto para látex en ambas piezas. Deja secar de 3 a 5 minutos hasta que el adhesivo no transfiera al tacto. Une pieza por pieza alineando las muescas de registro milimétricamente.</p>
+        <div class="warning">⚠️ <strong>Precaución:</strong> El látex encolado se adhiere de forma instantánea al contacto. No intentes despegar si queda mal alineado; usa disolvente con pincel para separar sin rasgar.</div>
+    </div>
+
+    <div class="step-card">
+        <div class="step-title">PASO 3: Presionado con Rodillo de Silicona (Seam Roller)</div>
+        <p>Pasa el rodillo de presión firmemente sobre cada costura solapada para expulsar las burbujas de aire atrapadas y garantizar un sellado volcánico hermético.</p>
+    </div>
+
+    <div class="step-card">
+        <div class="step-title">PASO 4: Refuerzos Interiores en Cruces de Costuras ("T" y "X")</div>
+        <p>Corta círculos u ovalos de látex de 0.25mm y pégalos en la cara interna de los cruces de costuras (entrepierna, axilas, cuello) para evitar desgarros catastróficos por fatiga de material.</p>
+    </div>
+
+    <div class="step-card">
+        <div class="step-title">PASO 5: Instalación de Cremallera (${state.zipperType.toUpperCase()})</div>
+        <p>Pega primero una tira de refuerzo de 0.25mm a lo largo del canal de la cremallera. Aplica imprimación al tejido de la cremallera de poliéster y une bajo tensión neutra.</p>
+    </div>
+
+    <div class="step-card">
+        <div class="step-title">PASO 6: Talcado Antiadherente y Pulido con Silicona (Vivishine)</div>
+        <p>Espolvorea talco neutro en el interior para evitar que las paredes de látex se adhieran entre sí. Aplica spray o baño de silicona pura en el exterior para el acabado de brillo espejo.</p>
+    </div>
+</body>
+</html>`;
+
+    printWindow.document.write(guideHtml);
+    printWindow.document.close();
 }

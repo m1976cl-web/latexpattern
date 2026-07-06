@@ -249,11 +249,21 @@
                         <div class="export-dropdown-wrapper">
                             <button class="action-btn highlight-btn" id="btn-export">📥 Exportar ▾</button>
                             <div class="export-dropdown-menu hidden" id="export-dropdown">
+                                <div class="paper-select-box" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; color: var(--text-secondary);">
+                                    <label for="pdf-paper-size">Tamaño PDF:</label>
+                                    <select id="pdf-paper-size" style="background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: var(--text-primary); font-size: 0.75rem; border-radius: 4px; padding: 2px 4px;">
+                                        <option value="a4" selected>A4 Mosaico (210x297mm)</option>
+                                        <option value="letter">Carta / Letter (216x279mm)</option>
+                                        <option value="a0">A0 Plóter Rollo (841x1189mm)</option>
+                                        <option value="a1">A1 Plóter Rollo (594x841mm)</option>
+                                    </select>
+                                </div>
                                 <button class="export-opt-btn" id="btn-export-svg">📐 SVG Vectorial 1:1</button>
-                                <button class="export-opt-btn" id="btn-export-pdf">📄 PDF Imprimible (Escala 1:1)</button>
+                                <button class="export-opt-btn" id="btn-export-pdf">📄 PDF Mosaico (Escala 1:1)</button>
                                 <button class="export-opt-btn" id="btn-export-dxf">🏗️ DXF Industrial CAD</button>
                                 <button class="export-opt-btn" id="btn-export-png">🖼️ Imagen PNG HD</button>
                                 <button class="export-opt-btn" id="btn-export-techpack">📋 Ficha Técnica (Tech Pack PDF)</button>
+                                <button class="export-opt-btn" id="btn-export-assembly-guide">📖 Guía de Ensamblaje Paso a Paso (PDF)</button>
                                 <div class="dropdown-divider"></div>
                                 <button class="export-opt-btn" id="btn-export-json">💾 Guardar Perfil (JSON)</button>
                                 <button class="export-opt-btn" id="btn-import-json">📂 Cargar Perfil (JSON)</button>
@@ -262,6 +272,7 @@
                         <input type="file" id="json-file-input" accept=".json" style="display:none;">
                     </div>
                     <div class="viewer-actions hidden" id="sim-3d-actions">
+                        <button class="action-btn" id="btn-toggle-heatmap" title="Mapa de Tensiones de Látex">🌡️ Tensiones</button>
                         <div class="color-palette-bar" id="real-color-selector">
                             <span class="palette-title">Látex:</span>
                             <button class="color-chip active" data-color="black" style="background: #111116; border-color: rgba(255,255,255,0.4);" title="Negro Brillo"></button>
@@ -271,7 +282,7 @@
                             <button class="color-chip" data-color="gold" style="background: #d4af37;" title="Dorado Metalizado"></button>
                             <button class="color-chip" data-color="purple" style="background: #8a2be2;" title="Púrpura Vinilo"></button>
                         </div>
-                        <div class="toggle-buttons mini-toggle" style="margin-right: 0.5rem;">
+                        <div class="toggle-buttons">
                             <button class="toggle-btn active" id="sim-mode-vector" data-mode="vector" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Vector 3D</button>
                             <button class="toggle-btn" id="sim-mode-real" data-mode="real" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Foto</button>
                             <button class="toggle-btn" id="sim-mode-webgl" data-mode="webgl" style="padding: 0.2rem 0.5rem; font-size: 0.7rem; color: var(--accent-cyan);">WebGL 3D</button>
