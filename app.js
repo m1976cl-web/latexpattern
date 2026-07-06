@@ -610,7 +610,37 @@ function setupEventHandlers() {
         drawPattern();
     });
 
-    document.getElementById("btn-export").addEventListener("click", exportSVGPattern);
+    // Manejo de Menú Desplegable de Exportación
+    const btnExport = document.getElementById("btn-export");
+    const exportDropdown = document.getElementById("export-dropdown");
+
+    if (btnExport && exportDropdown) {
+        btnExport.addEventListener("click", (e) => {
+            e.stopPropagation();
+            exportDropdown.classList.toggle("hidden");
+        });
+
+        document.addEventListener("click", () => {
+            exportDropdown.classList.add("hidden");
+        });
+    }
+
+    document.getElementById("btn-export-svg")?.addEventListener("click", exportSVGPattern);
+    document.getElementById("btn-export-pdf")?.addEventListener("click", exportPDFPattern);
+    document.getElementById("btn-export-dxf")?.addEventListener("click", exportDXFPattern);
+    document.getElementById("btn-export-png")?.addEventListener("click", exportPNGPattern);
+    document.getElementById("btn-export-json")?.addEventListener("click", exportJSONProfile);
+    
+    const btnImportJson = document.getElementById("btn-import-json");
+    const jsonFileInput = document.getElementById("json-file-input");
+
+    if (btnImportJson && jsonFileInput) {
+        btnImportJson.addEventListener("click", () => {
+            jsonFileInput.click();
+        });
+
+        jsonFileInput.addEventListener("change", importJSONProfile);
+    }
 
     // Zoom-dragging
     canvasContainer.addEventListener("mousedown", (e) => {
@@ -862,6 +892,24 @@ function drawPattern() {
             break;
         case "stockings":
             pathsHtml = drawStockingsPattern(m, seam);
+            break;
+        case "skirt":
+            pathsHtml = drawSkirtPattern(m, seam);
+            break;
+        case "corset":
+            pathsHtml = drawCorsetPattern(m, seam);
+            break;
+        case "leggings":
+            pathsHtml = drawLeggingsPattern(m, seam);
+            break;
+        case "harness":
+            pathsHtml = drawHarnessPattern(m, seam);
+            break;
+        case "hood":
+            pathsHtml = drawHoodPattern(m, seam);
+            break;
+        case "briefs":
+            pathsHtml = drawBriefsPattern(m, seam);
             break;
     }
 
@@ -1416,6 +1464,275 @@ function drawStockingsPattern(m, seam) {
     `;
 }
 
+// 2D CAD: FALDA TUBO / PENCIL SKIRT
+function drawSkirtPattern(m, seam) {
+    const w = m.waistCircum || 68;
+    const h = m.hipCircum || 95;
+    const len = (m.waistToAnkle || 98) * 0.55;
+
+    const wHalf = (w / 4) * 8.5;
+    const hHalf = (h / 4) * 9.5;
+    const sLen = len * 4.2;
+
+    const sx = 180;
+    const sy = 80;
+
+    const frontPath = `
+        M ${sx} ${sy}
+        h ${wHalf}
+        c ${hHalf*0.1} ${sLen*0.2} ${hHalf*0.2} ${sLen*0.45} ${hHalf - wHalf} ${sLen*0.45}
+        v ${sLen*0.55}
+        h ${-hHalf}
+        Z
+    `;
+    const frontSeam = `
+        M ${sx} ${sy - seam}
+        h ${wHalf + seam}
+        c ${hHalf*0.1} ${sLen*0.2} ${hHalf*0.2} ${sLen*0.45} ${hHalf - wHalf + seam} ${sLen*0.45}
+        v ${sLen*0.55 + seam}
+        h ${-hHalf - seam*2}
+        Z
+    `;
+
+    const bx = 450;
+    const by = 80;
+    const backPath = `
+        M ${bx} ${by}
+        h ${wHalf}
+        c ${hHalf*0.1} ${sLen*0.2} ${hHalf*0.2} ${sLen*0.45} ${hHalf - wHalf} ${sLen*0.45}
+        v ${sLen*0.55}
+        h ${-hHalf}
+        Z
+    `;
+
+    return `
+        <path d="${frontSeam}" class="seam-allowance-outline" />
+        <path d="${frontPath}" class="pattern-outline" />
+
+        <path d="${backPath}" class="pattern-outline" />
+        <line x1="${bx}" y1="${by}" x2="${bx}" y2="${by + sLen}" stroke="var(--accent-cyan)" stroke-dasharray="4,4" />
+
+        ${drawDimensionCallout(sx, sy - 15, sx + wHalf, sy - 15, `Cintura Fr: ${(w * 0.25).toFixed(1)}cm`)}
+        ${drawDimensionCallout(sx + hHalf, sy, sx + hHalf, sy + sLen, `Largo Falda: ${(len).toFixed(1)}cm`)}
+
+        <text x="${sx + hHalf*0.5}" y="${sy + sLen*0.4}" class="pattern-text-label">FALDA TUBO DELANTERO</text>
+        <text x="${sx + hHalf*0.5}" y="${sy + sLen*0.4 + 18}" class="pattern-text-desc">Cortar 1x al Doblez</text>
+
+        <text x="${bx + hHalf*0.5}" y="${by + sLen*0.4}" class="pattern-text-label">FALDA TUBO TRASERO</text>
+        <text x="${bx + hHalf*0.5}" y="${by + sLen*0.4 + 18}" class="pattern-text-desc">Cortar 2x (Cierre Posterior)</text>
+    `;
+}
+
+// 2D CAD: CORSÉ / BUSTIER OVERBUST (4 Paneles)
+function drawCorsetPattern(m, seam) {
+    const bust = m.bustCircum || 90;
+    const waist = m.waistCircum || 68;
+    const hip = m.hipCircum || 95;
+    const neckToWaist = m.neckToWaist || 42;
+
+    const pWidth = (waist / 8) * 8.5;
+    const cHeight = neckToWaist * 6.5;
+
+    const cx = 100;
+    const cy = 100;
+
+    let panelsHtml = "";
+    for (let i = 0; i < 4; i++) {
+        const px = cx + i * (pWidth + 50);
+        const topW = (bust / 8) * 8.5 * (i === 1 ? 1.2 : 0.9);
+        const botW = (hip / 8) * 8.5 * (i === 2 ? 1.2 : 0.9);
+
+        const pPath = `
+            M ${px} ${cy}
+            h ${topW}
+            l ${(botW - topW)*0.5 + (pWidth - topW)} ${cHeight*0.4}
+            l ${-(botW - topW)*0.2} ${cHeight*0.6}
+            h ${-botW}
+            l ${-(botW - topW)*0.2} ${-cHeight*0.6}
+            Z
+        `;
+
+        panelsHtml += `
+            <path d="${pPath}" class="pattern-outline" />
+            <!-- Canaleta de Ballena (Boning Channel) -->
+            <line x1="${px + topW/2}" y1="${cy}" x2="${px + botW/2}" y2="${cy + cHeight}" stroke="var(--accent-cyan)" stroke-dasharray="3,3" stroke-width="1" />
+            <text x="${px + topW/2}" y="${cy + cHeight*0.5}" class="pattern-text-label">PANEL ${i + 1}</text>
+            <text x="${px + topW/2}" y="${cy + cHeight*0.5 + 15}" class="pattern-text-desc">Cortar 2x</text>
+        `;
+    }
+
+    return `
+        ${panelsHtml}
+        ${drawDimensionCallout(cx, cy - 15, cx + (pWidth + 50) * 4, cy - 15, `Busto Corsé: ${(bust).toFixed(1)}cm`)}
+        ${drawDimensionCallout(cx, cy + cHeight + 20, cx + (pWidth + 50) * 4, cy + cHeight + 20, `Cintura Corsé (-10%): ${(waist * 0.9).toFixed(1)}cm`)}
+    `;
+}
+
+// 2D CAD: LEGGINGS (Pantalón Ajustado)
+function drawLeggingsPattern(m, seam) {
+    const waist = m.waistCircum || 68;
+    const hip = m.hipCircum || 95;
+    const thigh = m.thighCircum || 54;
+    const knee = m.kneeCircum || 36;
+    const ankle = m.ankleCircum || 22;
+    const legLen = m.legLength || 72;
+    const sideLen = m.waistToAnkle || 98;
+
+    const wHalf = (waist / 4) * 8.5;
+    const thHalf = (thigh / 2) * 8.0;
+    const kHalf = (knee / 2) * 7.5;
+    const aHalf = (ankle / 2) * 7.0;
+    const hVisual = sideLen * 4.5;
+    const crotchRise = (sideLen - legLen) * 5.0;
+
+    const lx = 200;
+    const ly = 60;
+
+    const legPath = `
+        M ${lx} ${ly}
+        h ${wHalf}
+        c ${thHalf*0.1} ${crotchRise*0.5} ${thHalf*0.3} ${crotchRise} ${thHalf - wHalf} ${crotchRise}
+        l ${-(thHalf - kHalf)*0.5} ${(hVisual - crotchRise)*0.4}
+        l ${-(kHalf - aHalf)*0.5} ${(hVisual - crotchRise)*0.6}
+        h ${-aHalf}
+        l ${-(kHalf - aHalf)*0.5} ${-(hVisual - crotchRise)*0.6}
+        l ${-(thHalf - kHalf)*0.5} ${-(hVisual - crotchRise)*0.4}
+        c -20 -30 -30 -60 ${-(wHalf - thHalf)} ${-crotchRise}
+        Z
+    `;
+
+    return `
+        <path d="${legPath}" class="pattern-outline" />
+
+        ${drawDimensionCallout(lx, ly - 15, lx + wHalf, ly - 15, `Cintura: ${(waist * 0.25).toFixed(1)}cm`)}
+        ${drawDimensionCallout(lx, ly + crotchRise, lx + thHalf, ly + crotchRise, `Muslo: ${(thigh).toFixed(1)}cm`)}
+        ${drawDimensionCallout(lx + (thHalf - aHalf)*0.5, ly + hVisual + 15, lx + (thHalf + aHalf)*0.5, ly + hVisual + 15, `Tobillo: ${(ankle).toFixed(1)}cm`)}
+
+        <text x="${lx + thHalf*0.5}" y="${ly + hVisual * 0.4}" class="pattern-text-label">LEGGINGS (PIERNA COMPLETA)</text>
+        <text x="${lx + thHalf*0.5}" y="${ly + hVisual * 0.4 + 18}" class="pattern-text-desc">Cortar 2x (Espejo — Entrepierna: ${(legLen).toFixed(0)}cm)</text>
+    `;
+}
+
+// 2D CAD: ARNÉS DE PECHO Y MUSLOS
+function drawHarnessPattern(m, seam) {
+    const bust = m.bustCircum || 90;
+    const armpit = m.armpitCircum || 88;
+    const waist = m.waistCircum || 68;
+    const thigh = m.thighCircum || 54;
+
+    const chestBandLen = armpit * 5.5;
+    const waistBandLen = waist * 5.0;
+    const thighBandLen = thigh * 4.5;
+    const strapW = 24;
+
+    const hx = 120;
+    const hy = 80;
+
+    return `
+        <!-- Banda Pecho -->
+        <rect x="${hx}" y="${hy}" width="${chestBandLen}" height="${strapW}" rx="4" class="pattern-outline" />
+        <circle cx="${hx + chestBandLen*0.5}" cy="${hy + strapW/2}" r="8" fill="none" stroke="var(--accent-cyan)" stroke-width="2" />
+        <text x="${hx + chestBandLen*0.5}" y="${hy + strapW/2 + 30}" class="pattern-text-label">BANDA PECHO (${(armpit).toFixed(0)}cm)</text>
+
+        <!-- Banda Cintura -->
+        <rect x="${hx}" y="${hy + 100}" width="${waistBandLen}" height="${strapW}" rx="4" class="pattern-outline" />
+        <circle cx="${hx + waistBandLen*0.5}" cy="${hy + 100 + strapW/2}" r="8" fill="none" stroke="var(--accent-cyan)" stroke-width="2" />
+        <text x="${hx + waistBandLen*0.5}" y="${hy + 100 + strapW/2 + 30}" class="pattern-text-label">BANDA CINTURA (${(waist).toFixed(0)}cm)</text>
+
+        <!-- Bandas de Muslo (2x) -->
+        <rect x="${hx}" y="${hy + 200}" width="${thighBandLen}" height="${strapW}" rx="4" class="pattern-outline" />
+        <text x="${hx + thighBandLen*0.5}" y="${hy + 200 + strapW/2 + 30}" class="pattern-text-label">BANDA MUSLO 2X (${(thigh).toFixed(0)}cm)</text>
+
+        ${drawDimensionCallout(hx, hy - 15, hx + chestBandLen, hy - 15, `Pecho: ${(armpit).toFixed(1)}cm`)}
+        ${drawDimensionCallout(hx, hy + 85, hx + waistBandLen, hy + 85, `Cintura: ${(waist).toFixed(1)}cm`)}
+    `;
+}
+
+// 2D CAD: CAPUCHA DE LÁTEX CON CUELLO
+function drawHoodPattern(m, seam) {
+    const head = m.headCircum || 55;
+    const headLen = m.headLength || 23;
+    const neck = m.neckCircum || 33;
+    const neckLen = m.neckLength || 7;
+    const shoulder = m.shoulderLen || 38;
+
+    const hx = 160;
+    const hy = 80;
+    const scaleH = head * 4.8;
+    const scaleV = headLen * 11;
+    const collarW = shoulder * 5.0;
+
+    const hoodPath = `
+        M ${hx} ${hy}
+        c ${scaleH * 0.2} ${-scaleV * 0.05} ${scaleH * 0.4} ${scaleV * 0.02} ${scaleH * 0.5} ${scaleV * 0.2}
+        c ${scaleH * 0.1} ${scaleV * 0.2} ${scaleH * 0.05} ${scaleV * 0.45} 0 ${scaleV * 0.6}
+        l ${collarW * 0.2} ${scaleV * 0.25}
+        h ${-collarW * 0.8}
+        l ${collarW * 0.1} ${-scaleV * 0.25}
+        C ${hx - 20} ${hy + scaleV * 0.6} ${hx} ${hy + scaleV * 0.3} ${hx} ${hy}
+        Z
+    `;
+
+    return `
+        <path d="${hoodPath}" class="pattern-outline" />
+
+        <!-- Aberturas (Ojos / Boca) -->
+        <ellipse cx="${hx + scaleH*0.35}" cy="${hy + scaleV*0.35}" rx="14" ry="8" fill="none" stroke="var(--accent-pink)" stroke-width="1.5" />
+        <ellipse cx="${hx + scaleH*0.32}" cy="${hy + scaleV*0.58}" rx="16" ry="6" fill="none" stroke="var(--accent-pink)" stroke-width="1.5" />
+
+        ${drawDimensionCallout(hx, hy - 15, hx + scaleH * 0.5, hy - 15, `Contorno Cabeza: ${(head).toFixed(1)}cm`)}
+        ${drawDimensionCallout(hx, hy, hx, hy + scaleV * 0.8, `Alto Cabeza: ${(headLen).toFixed(1)}cm`)}
+
+        <text x="${hx + scaleH*0.25}" y="${hy + scaleV*0.2}" class="pattern-text-label">CAPUCHA LATERAL CON CUELLO</text>
+        <text x="${hx + scaleH*0.25}" y="${hy + scaleV*0.2 + 18}" class="pattern-text-desc">Cortar 2x (Espejo — Cuello: ${(neck).toFixed(0)}cm)</text>
+    `;
+}
+
+// 2D CAD: SLIP / CALZÓN CLÁSICO
+function drawBriefsPattern(m, seam) {
+    const waist = m.waistCircum || 68;
+    const hip = m.hipCircum || 95;
+    const ubend = m.ubend || 150;
+
+    const wHalf = (waist / 4) * 8.5;
+    const rise = (ubend * 0.15) * 8.0;
+    const crotchW = 32;
+
+    const bx = 160;
+    const by = 100;
+
+    const frontBrief = `
+        M ${bx} ${by}
+        h ${wHalf}
+        c ${-wHalf*0.2} ${rise*0.5} ${-wHalf*0.6} ${rise*0.8} ${-(wHalf - crotchW)*0.5 - crotchW} ${rise}
+        h ${-crotchW}
+        c ${-crotchW} ${-rise*0.2} ${-(wHalf - crotchW)*0.5} ${-rise*0.5} ${-(wHalf - crotchW)*0.5} ${-rise}
+        Z
+    `;
+
+    const backx = 450;
+    const backBrief = `
+        M ${backx} ${by}
+        h ${wHalf}
+        c ${-wHalf*0.1} ${rise*0.6} ${-wHalf*0.4} ${rise*0.9} ${-(wHalf - crotchW)*0.5 - crotchW} ${rise}
+        h ${-crotchW}
+        c ${-crotchW} ${-rise*0.1} ${-(wHalf - crotchW)*0.6} ${-rise*0.4} ${-(wHalf - crotchW)*0.5} ${-rise}
+        Z
+    `;
+
+    return `
+        <path d="${frontBrief}" class="pattern-outline" />
+        <path d="${backBrief}" class="pattern-outline" />
+
+        ${drawDimensionCallout(bx, by - 15, bx + wHalf, by - 15, `Cintura Fr: ${(waist * 0.25).toFixed(1)}cm`)}
+        ${drawDimensionCallout(backx, by - 15, backx + wHalf, by - 15, `Cintura Tr: ${(waist * 0.25).toFixed(1)}cm`)}
+
+        <text x="${bx + wHalf*0.5}" y="${by + rise*0.4}" class="pattern-text-label">SLIP DELANTERO</text>
+        <text x="${backx + wHalf*0.5}" y="${by + rise*0.4}" class="pattern-text-label">SLIP TRASERO</text>
+    `;
+}
+
+
 // 11. MOTOR DEL SIMULADOR 3D INTERACTIVO (PROYECCIÓN TRIGONOMÉTRICA 360°)
 // Este motor define un maniquí de costura con vértices en el espacio (X, Y, Z).
 // Al rotar con el ratón o el deslizador (ángulo theta), rotamos las coordenadas trigonométricamente
@@ -1685,6 +2002,87 @@ function draw3DMannequin() {
                 <path d="M ${p.kneeR.x} ${p.kneeR.y - 10} L ${p.ankleR.x} ${p.ankleR.y}" stroke="#ff2a85" stroke-width="9" stroke-linecap="round" />
             `;
             break;
+
+        case "skirt":
+            garment3dSvg = `
+                <!-- Falda Tubo en 3D -->
+                <path d="M ${p.waistL.x} ${p.waistL.y}
+                         L ${p.hipsL.x - 2} ${p.hipsL.y}
+                         L ${p.kneeL.x + 2} ${p.kneeL.y + 10}
+                         H ${p.kneeR.x - 2}
+                         L ${p.hipsR.x + 2} ${p.hipsR.y}
+                         L ${p.waistR.x} ${p.waistR.y}
+                         Z" 
+                      ${fillStyle} class="latex-garment-3d" />
+            `;
+            break;
+
+        case "corset":
+            garment3dSvg = `
+                <!-- Corsé en 3D -->
+                <path d="M ${p.chestL.x} ${p.chestL.y - 10}
+                         L ${p.waistL.x - 4} ${p.waistL.y}
+                         L ${p.hipsL.x} ${p.hipsL.y - 5}
+                         Q ${p.crotch.x} ${p.hipsL.y} ${p.hipsR.x} ${p.hipsR.y - 5}
+                         L ${p.waistR.x + 4} ${p.waistR.y}
+                         L ${p.chestR.x} ${p.chestR.y - 10}
+                         Q ${p.crotch.x} ${p.chestL.y - 5} ${p.chestL.x} ${p.chestL.y - 10}
+                         Z" 
+                      ${fillStyle} class="latex-garment-3d" />
+                <!-- Líneas de ballenas 3D -->
+                <line x1="${p.chestL.x + 10}" y1="${p.chestL.y}" x2="${p.hipsL.x + 10}" y2="${p.hipsL.y}" stroke="#ffffff" stroke-width="1" />
+                <line x1="${p.chestR.x - 10}" y1="${p.chestR.y}" x2="${p.hipsR.x - 10}" y2="${p.hipsR.y}" stroke="#ffffff" stroke-width="1" />
+            `;
+            break;
+
+        case "leggings":
+            garment3dSvg = `
+                <!-- Leggings en 3D -->
+                <path d="M ${p.waistL.x} ${p.waistL.y}
+                         L ${p.hipsL.x} ${p.hipsL.y}
+                         L ${p.kneeL.x} ${p.kneeL.y}
+                         L ${p.ankleL.x} ${p.ankleL.y}
+                         L ${p.crotch.x} ${p.crotch.y}
+                         L ${p.ankleR.x} ${p.ankleR.y}
+                         L ${p.kneeR.x} ${p.kneeR.y}
+                         L ${p.hipsR.x} ${p.hipsR.y}
+                         L ${p.waistR.x} ${p.waistR.y}
+                         Z" 
+                      ${fillStyle} class="latex-garment-3d" />
+            `;
+            break;
+
+        case "harness":
+            garment3dSvg = `
+                <!-- Arnés 3D -->
+                <path d="M ${p.chestL.x - 5} ${p.chestL.y} H ${p.chestR.x + 5}" stroke="#ff2a85" stroke-width="4" />
+                <path d="M ${p.waistL.x} ${p.waistL.y} H ${p.waistR.x}" stroke="#ff2a85" stroke-width="4" />
+                <circle cx="${p.crotch.x}" cy="${p.chestL.y}" r="6" fill="none" stroke="#00f0ff" stroke-width="2" />
+                <circle cx="${p.crotch.x}" cy="${p.waistL.y}" r="6" fill="none" stroke="#00f0ff" stroke-width="2" />
+                <line x1="${p.crotch.x}" y1="${p.chestL.y}" x2="${p.crotch.x}" y2="${p.waistL.y}" stroke="#ff2a85" stroke-width="3" />
+            `;
+            break;
+
+        case "hood":
+            garment3dSvg = `
+                <!-- Capucha en 3D -->
+                <circle cx="${p.headCenter.x}" cy="${p.headCenter.y}" r="${p.headTop.y - p.headCenter.y + 1}" ${fillStyle} class="latex-garment-3d" />
+                <path d="M ${p.neck.x - 12} ${p.neck.y} H ${p.neck.x + 12} L ${p.shoulderR.x - 5} ${p.shoulderR.y + 10} L ${p.shoulderL.x + 5} ${p.shoulderL.y + 10} Z" ${fillStyle} />
+            `;
+            break;
+
+        case "briefs":
+            garment3dSvg = `
+                <!-- Slip en 3D -->
+                <path d="M ${p.waistL.x} ${p.waistL.y}
+                         L ${p.hipsL.x} ${p.hipsL.y}
+                         Q ${p.crotch.x} ${p.crotch.y + 10} ${p.crotch.x} ${p.crotch.y}
+                         Q ${p.crotch.x} ${p.crotch.y + 10} ${p.hipsR.x} ${p.hipsR.y}
+                         L ${p.waistR.x} ${p.waistR.y}
+                         Z" 
+                      ${fillStyle} class="latex-garment-3d" />
+            `;
+            break;
     }
 
     const final3dSvg = `
@@ -1742,6 +2140,39 @@ function updateCutList() {
         content = `
             <div class="cut-item"><span class="cut-qty">2x</span><span class="cut-name">Lateral Cabeza (Perfil)</span><span class="cut-spec">Látex 0.40mm (Espejo)</span></div>
         `;
+    } else if (state.garment === "skirt") {
+        content = `
+            <div class="cut-item"><span class="cut-qty">1x</span><span class="cut-name">Panel Delantero Falda</span><span class="cut-spec">${specText} (Doblez)</span></div>
+            <div class="cut-item"><span class="cut-qty">2x</span><span class="cut-name">Paneles Traseros Falda</span><span class="cut-spec">${specText} (Cierre)</span></div>
+            <div class="cut-item"><span class="cut-qty">1x</span><span class="cut-name">Pretina de Cintura</span><span class="cut-spec">Látex 0.50mm+ Reforzado</span></div>
+        `;
+    } else if (state.garment === "corset") {
+        content = `
+            <div class="cut-item"><span class="cut-qty">8x</span><span class="cut-name">Paneles de Corsé (1 a 4)</span><span class="cut-spec">Látex 0.50mm - 0.80mm (2x c/u)</span></div>
+            <div class="cut-item"><span class="cut-qty">1x</span><span class="cut-name">Cinta de Cintura Interna</span><span class="cut-spec">Refuerzo Rígido 1.0mm</span></div>
+        `;
+    } else if (state.garment === "leggings") {
+        content = `
+            <div class="cut-item"><span class="cut-qty">2x</span><span class="cut-name">Paneles Leggings Piernas</span><span class="cut-spec">${specText} (Espejo)</span></div>
+            <div class="cut-item"><span class="cut-qty">1x</span><span class="cut-name">Pretina de Cintura Alta</span><span class="cut-spec">Látex 0.40mm</span></div>
+        `;
+    } else if (state.garment === "harness") {
+        content = `
+            <div class="cut-item"><span class="cut-qty">1x</span><span class="cut-name">Tira de Pecho</span><span class="cut-spec">Látex 0.80mm+</span></div>
+            <div class="cut-item"><span class="cut-qty">1x</span><span class="cut-name">Tira de Cintura</span><span class="cut-spec">Látex 0.80mm+</span></div>
+            <div class="cut-item"><span class="cut-qty">2x</span><span class="cut-name">Tiras de Muslo</span><span class="cut-spec">Látex 0.80mm+</span></div>
+        `;
+    } else if (state.garment === "hood") {
+        content = `
+            <div class="cut-item"><span class="cut-qty">2x</span><span class="cut-name">Paneles Lateral Capucha</span><span class="cut-spec">Látex 0.40mm (Espejo)</span></div>
+            <div class="cut-item"><span class="cut-qty">1x</span><span class="cut-name">Tira Central Cabeza</span><span class="cut-spec">Látex 0.40mm</span></div>
+            <div class="cut-item"><span class="cut-qty">1x</span><span class="cut-name">Capa / Cuello de Hombros</span><span class="cut-spec">Látex 0.40mm</span></div>
+        `;
+    } else if (state.garment === "briefs") {
+        content = `
+            <div class="cut-item"><span class="cut-qty">1x</span><span class="cut-name">Panel Delantero Slip</span><span class="cut-spec">${specText}</span></div>
+            <div class="cut-item"><span class="cut-qty">1x</span><span class="cut-name">Panel Trasero Slip</span><span class="cut-spec">${specText}</span></div>
+        `;
     } else {
         content = `
             <div class="cut-item"><span class="cut-qty">2x</span><span class="cut-name">Paneles Patronados</span><span class="cut-spec">${specText}</span></div>
@@ -1751,7 +2182,7 @@ function updateCutList() {
     cutContainer.innerHTML = content;
 }
 
-// 13. EXPORTACIÓN REAL 1:1 EN MILÍMETROS
+// 13. EXPORTACIÓN REAL 1:1 EN MILÍMETROS (SVG)
 function exportSVGPattern() {
     const rawSvg = canvasContainer.querySelector("svg");
     if (!rawSvg) return;
@@ -1789,4 +2220,233 @@ function exportSVGPattern() {
     downloadLink.click();
     document.body.removeChild(downloadLink);
     URL.revokeObjectURL(url);
+}
+
+// 14. EXPORTACIÓN PDF IMPRIMIBLE 1:1 EN A4 TILED
+function exportPDFPattern() {
+    const rawSvg = canvasContainer.querySelector("svg");
+    if (!rawSvg) return;
+
+    const patternGroupClone = rawSvg.querySelector("g#transform-group").cloneNode(true);
+    patternGroupClone.removeAttribute("transform");
+
+    const printWindow = window.open("", "_blank", "width=900,height=1000");
+    if (!printWindow) {
+        alert("Por favor, permite ventanas emergentes (popups) para generar la vista imprimible A4.");
+        return;
+    }
+
+    const printHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <title>LatexTailor — Patrón 1:1 Imprimible A4 (${state.garment.toUpperCase()})</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: #fff;
+            color: #000;
+        }
+        .page-header {
+            font-size: 11px;
+            font-weight: bold;
+            border-bottom: 2px solid #000;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .scale-check-box {
+            border: 2px solid #000;
+            width: 100mm;
+            height: 100mm;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .svg-container {
+            width: 190mm;
+            height: 270mm;
+            border: 1px stroke #ccc;
+        }
+        .pattern-outline { fill: none; stroke: #ff2a85; stroke-width: 2; }
+        .seam-allowance-outline { fill: none; stroke: #0088cc; stroke-width: 1; stroke-dasharray: 4,4; }
+        .pattern-text-label { fill: #000; font-size: 14px; font-weight: bold; text-anchor: middle; }
+        .pattern-text-desc { fill: #444; font-size: 10px; text-anchor: middle; }
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="padding: 15px; background: #111; color: #fff; text-align: center;">
+        <h2>📐 Vista de Impresión A4 Escala Real (1:1)</h2>
+        <p>Asegúrate de seleccionar <strong>"Escala Actual / 100%"</strong> en tu impresor (NO ajustar a la página).</p>
+        <button onclick="window.print()" style="padding: 10px 20px; font-size: 14px; background: #ff2a85; color: #fff; border: none; cursor: pointer; border-radius: 4px; font-weight: bold;">🖨️ IMPRIMIR / GUARDAR COMO PDF</button>
+    </div>
+
+    <div style="padding: 10mm;">
+        <div class="page-header">
+            <span>LATEXTAILOR v2.0 CAD — PRENDA: ${state.garment.toUpperCase()} (${state.gender.toUpperCase()})</span>
+            <span>TALLA: ${state.sizePreset.toUpperCase()} | LÁTEX: ${state.thickness}mm | SOLAPE: ${state.seamAllowance}mm</span>
+        </div>
+
+        <div class="scale-check-box">
+            CUADRADO DE COMPROBACIÓN DE ESCALA (10 cm x 10 cm)
+        </div>
+
+        <div class="svg-container">
+            <svg width="100%" height="100%" viewBox="0 0 900 900">
+                ${patternGroupClone.innerHTML}
+            </svg>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+}
+
+// 15. EXPORTACIÓN DXF INDUSTRIAL CAD (R12 SPECIFICATION)
+function exportDXFPattern() {
+    const rawSvg = canvasContainer.querySelector("svg");
+    if (!rawSvg) return;
+
+    let dxfContent = `0\nSECTION\n2\nHEADER\n0\nENDSEC\n0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLAYER\n70\n1\n0\nLAYER\n2\nPATRON_OUTLINE\n70\n0\n62\n1\n6\nCONTINUOUS\n0\nENDTAB\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n`;
+
+    const paths = rawSvg.querySelectorAll("path");
+    paths.forEach((path) => {
+        const d = path.getAttribute("d");
+        if (!d) return;
+
+        const matches = d.match(/[MLHVCSQZ][^MLHVCSQZ]*/gi);
+        if (!matches) return;
+
+        dxfContent += `0\nPOLYLINE\n8\nPATRON_OUTLINE\n66\n1\n70\n0\n`;
+        let curX = 0, curY = 0;
+
+        matches.forEach(cmd => {
+            const type = cmd[0];
+            const args = cmd.slice(1).trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n));
+
+            if (type === 'M' || type === 'L') {
+                for (let i = 0; i < args.length; i += 2) {
+                    curX = args[i];
+                    curY = -args[i + 1];
+                    dxfContent += `0\nVERTEX\n8\nPATRON_OUTLINE\n10\n${curX.toFixed(3)}\n20\n${curY.toFixed(3)}\n30\n0.0\n`;
+                }
+            } else if (type === 'H') {
+                curX = args[0];
+                dxfContent += `0\nVERTEX\n8\nPATRON_OUTLINE\n10\n${curX.toFixed(3)}\n20\n${curY.toFixed(3)}\n30\n0.0\n`;
+            } else if (type === 'V') {
+                curY = -args[0];
+                dxfContent += `0\nVERTEX\n8\nPATRON_OUTLINE\n10\n${curX.toFixed(3)}\n20\n${curY.toFixed(3)}\n30\n0.0\n`;
+            }
+        });
+
+        dxfContent += `0\nSEQEND\n8\nPATRON_OUTLINE\n`;
+    });
+
+    dxfContent += `0\nENDSEC\n0\nEOF\n`;
+
+    const blob = new Blob([dxfContent], { type: "application/dxf;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `latex-tailor-${state.garment}-${state.gender}-${state.sizePreset}.dxf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// 16. EXPORTACIÓN PNG HD
+function exportPNGPattern() {
+    const rawSvg = canvasContainer.querySelector("svg");
+    if (!rawSvg) return;
+
+    const svgData = new XMLSerializer().serializeToString(rawSvg);
+    const canvas = document.createElement("canvas");
+    canvas.width = 2400;
+    canvas.height = 1950;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#08080c";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const img = new Image();
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+
+    img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+
+        const pngUrl = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.href = pngUrl;
+        downloadLink.download = `latex-tailor-${state.garment}-${state.gender}-${state.sizePreset}.png`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    };
+    img.src = url;
+}
+
+// 17. EXPORTACIÓN E IMPORTACIÓN DE PERFILES JSON
+function exportJSONProfile() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `latex-tailor-perfil-${state.gender}-${state.sizePreset}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+}
+
+function importJSONProfile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const importedState = JSON.parse(e.target.result);
+            if (importedState && importedState.measurements) {
+                state = { ...state, ...importedState };
+                
+                if (latexThicknessInput) latexThicknessInput.value = state.thickness;
+                if (thicknessVal) thicknessVal.textContent = state.thickness.toFixed(2) + " mm";
+                if (tensionLevelSelect) tensionLevelSelect.value = state.tension;
+                if (seamAllowanceInput) seamAllowanceInput.value = state.seamAllowance;
+                if (seamVal) seamVal.textContent = state.seamAllowance + " mm";
+                if (sizePresetSelect) sizePresetSelect.value = state.sizePreset;
+
+                document.querySelectorAll(".garment-btn").forEach(btn => {
+                    if (btn.dataset.garment === state.garment) btn.classList.add("active");
+                    else btn.classList.remove("active");
+                });
+
+                setActiveGender(state.gender);
+                renderMeasuresTable();
+                drawPattern();
+                draw3DMannequin();
+                updateCutList();
+
+                alert("¡Perfil cargado exitosamente!");
+            }
+        } catch (err) {
+            alert("Error al leer el archivo JSON de perfil: " + err.message);
+        }
+    };
+    reader.readAsText(file);
 }

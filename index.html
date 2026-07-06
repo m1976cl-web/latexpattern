@@ -77,6 +77,30 @@
                                 <span class="btn-icon">👣</span>
                                 <span class="btn-label">Medias</span>
                             </button>
+                            <button class="garment-btn" data-garment="skirt">
+                                <span class="btn-icon">👗</span>
+                                <span class="btn-label">Falda Tubo</span>
+                            </button>
+                            <button class="garment-btn" data-garment="corset">
+                                <span class="btn-icon">🦺</span>
+                                <span class="btn-label">Corsé / Bustier</span>
+                            </button>
+                            <button class="garment-btn" data-garment="leggings">
+                                <span class="btn-icon">👖</span>
+                                <span class="btn-label">Leggings</span>
+                            </button>
+                            <button class="garment-btn" data-garment="harness">
+                                <span class="btn-icon">🎗️</span>
+                                <span class="btn-label">Arnés Pecho</span>
+                            </button>
+                            <button class="garment-btn" data-garment="hood">
+                                <span class="btn-icon">👤</span>
+                                <span class="btn-label">Capucha Cuello</span>
+                            </button>
+                            <button class="garment-btn" data-garment="briefs">
+                                <span class="btn-icon">🩲</span>
+                                <span class="btn-label">Slip / Calzón</span>
+                            </button>
                         </div>
                     </div>
 
@@ -181,7 +205,19 @@
                     <div class="viewer-actions" id="pattern-actions">
                         <button class="action-btn" id="btn-reset-view">🎯 Centrar</button>
                         <button class="action-btn" id="btn-toggle-grid">🏁 Red</button>
-                        <button class="action-btn highlight-btn" id="btn-export">📥 SVG 1:1</button>
+                        <div class="export-dropdown-wrapper">
+                            <button class="action-btn highlight-btn" id="btn-export">📥 Exportar ▾</button>
+                            <div class="export-dropdown-menu hidden" id="export-dropdown">
+                                <button class="export-opt-btn" id="btn-export-svg">📐 SVG Vectorial 1:1</button>
+                                <button class="export-opt-btn" id="btn-export-pdf">📄 PDF Imprimible (A4 Tiled)</button>
+                                <button class="export-opt-btn" id="btn-export-dxf">🏗️ DXF Industrial CAD</button>
+                                <button class="export-opt-btn" id="btn-export-png">🖼️ Imagen PNG HD</button>
+                                <div class="dropdown-divider"></div>
+                                <button class="export-opt-btn" id="btn-export-json">💾 Guardar Perfil (JSON)</button>
+                                <button class="export-opt-btn" id="btn-import-json">📂 Cargar Perfil (JSON)</button>
+                            </div>
+                        </div>
+                        <input type="file" id="json-file-input" accept=".json" style="display:none;">
                     </div>
                     <div class="viewer-actions hidden" id="sim-3d-actions">
                         <div class="color-palette-bar" id="real-color-selector">
