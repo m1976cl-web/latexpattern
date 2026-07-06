@@ -810,14 +810,44 @@ function renderPhotorealisticView(force = false) {
 
     const viewAngle = (state.rotationAngle >= 90 && state.rotationAngle < 270) ? "back" : "front";
     
-    let garmentPrefix = state.garment;
-    if (state.garment === "body") garmentPrefix = state.gender === "female" ? "body" : "catsuit";
-    
-    const imageName = `${state.gender}_${garmentPrefix}_${viewAngle}.png`;
-    const imagePath = `assets/${imageName}`;
+    const existingImages = [
+        "female_body_front.png", "female_body_back.png",
+        "female_catsuit_front.png", "female_catsuit_back.png",
+        "female_gloves_front.png", "female_gloves_back.png",
+        "female_mask_front.png", "female_mask_back.png",
+        "female_sosten_front.png", "female_sosten_back.png",
+        "female_skirt_front.png", "female_skirt_back.png",
+        "female_corset_front.png", "female_corset_back.png",
+        "female_leggings_front.png", "female_leggings_back.png",
+        "female_harness_front.png", "female_harness_back.png",
+        "female_hood_front.png", "female_hood_back.png",
+        "female_colaless_front.png", "female_colaless_back.png",
+        "male_catsuit_front.png", "male_catsuit_back.png"
+    ];
+
+    let targetGender = state.gender;
+    let targetGarment = state.garment;
+
+    if (targetGarment === "body" && targetGender === "male") targetGarment = "catsuit";
+    if (targetGarment === "briefs" || targetGarment === "boxer") targetGarment = "colaless";
+    if (targetGarment === "stockings") targetGarment = "leggings";
+
+    let targetName = `${targetGender}_${targetGarment}_${viewAngle}.png`;
+
+    if (!existingImages.includes(targetName)) {
+        targetName = `female_${targetGarment}_${viewAngle}.png`;
+        if (!existingImages.includes(targetName)) {
+            targetName = `${targetGender}_catsuit_${viewAngle}.png`;
+            if (!existingImages.includes(targetName)) {
+                targetName = `female_catsuit_${viewAngle}.png`;
+            }
+        }
+    }
+
+    const imagePath = `assets/${targetName}`;
     const colorClass = `latex-color-${state.currentColor || 'black'}`;
     
-    const viewKey = `${state.gender}_${garmentPrefix}_${viewAngle}`;
+    const viewKey = `${targetName}_${state.currentColor}`;
     if (!force && realContainer.dataset.currentView === viewKey) {
         const img = realContainer.querySelector(".sim-real-image-el");
         if (img) img.className = `sim-real-image-el ${colorClass}`;
@@ -827,7 +857,7 @@ function renderPhotorealisticView(force = false) {
     realContainer.dataset.currentView = viewKey;
     realContainer.innerHTML = `
         <div class="loader-real-sim">Cargando textura de látex fotorrealista...</div>
-        <img src="${imagePath}" class="sim-real-image-el ${colorClass}" style="opacity: 0;" onload="this.style.opacity=1; if (this.previousElementSibling) this.previousElementSibling.style.display='none'" onerror="if (this.previousElementSibling) this.previousElementSibling.textContent='Imagen no disponible para este ángulo/prenda'; this.style.display='none'">
+        <img src="${imagePath}" class="sim-real-image-el ${colorClass}" style="opacity: 0;" onload="this.style.opacity=1; if (this.previousElementSibling) this.previousElementSibling.style.display='none'" onerror="if (this.previousElementSibling) this.previousElementSibling.textContent='Cargando textura de sustitución...';">
     `;
 }
 
