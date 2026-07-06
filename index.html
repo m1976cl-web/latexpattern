@@ -34,6 +34,7 @@
                     <button class="header-btn" id="btn-save-client" title="Guardar Cliente Actual">💾 Guardar</button>
                     <button class="header-btn danger-btn" id="btn-delete-client" title="Eliminar Cliente">🗑️</button>
                 </div>
+                <button class="header-btn" id="btn-open-client-modal" title="Directorio de Clientes">👥 Fichas Clientes</button>
                 <button class="header-btn highlight-header-btn" id="btn-open-cost-modal">📊 Consumo & Costes</button>
             </div>
 
@@ -328,7 +329,6 @@
                     <div class="cut-list-content" id="cut-list-dynamic"></div>
                 </div>
             </section>
-
         </section>
 
         <!-- SECCIÓN DE MANUALES -->
@@ -337,6 +337,7 @@
                 <button class="manual-tab active" data-tab="fabrication">🛠️ Guía de Confección</button>
                 <button class="manual-tab" data-tab="repair">🩹 Guía de Reparación</button>
                 <button class="manual-tab" data-tab="care">✨ Cuidado y Almacenamiento</button>
+                <button class="manual-tab" data-tab="suppliers">🛒 Proveedores y Herramientas</button>
             </div>
             <div class="manual-content">
                 <!-- TABA 1: GUÍA DE FABRICACIÓN -->
@@ -437,6 +438,69 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- TAB 4: DIRECTORIO DE PROVEEDORES Y HERRAMIENTAS -->
+                <div class="tab-pane" id="tab-suppliers">
+                    <div class="suppliers-container">
+                        <h3>🛒 Guía Profesional de Proveedores de Materia Prima y Herramientas</h3>
+                        <p class="suppliers-intro">Directorio de proveedores globales recomendados para la confección artesanal e industrial de prendas de látex de alta calidad.</p>
+                        
+                        <div class="suppliers-grid mt-3">
+                            <!-- Categoría 1: Planchas de Látex -->
+                            <div class="supplier-card glass">
+                                <div class="supplier-icon">📜</div>
+                                <h4>Planchas y Rollos de Látex</h4>
+                                <ul>
+                                    <li><strong>Radical Rubber (Reino Unido)</strong>: Fabricante de láminas de látex de alta tolerancia (0.25mm a 1.0mm), acabado mate, metálico y traslúcido. <a href="https://www.radicalrubber.co.uk/" target="_blank" rel="noopener">radicalrubber.co.uk</a></li>
+                                    <li><strong>4D Modelshop / 4D Rubber (UK/Europa)</strong>: Láminas en rollo continuo industrial con alto brillo natural. <a href="https://modelshapes.co.uk/" target="_blank" rel="noopener">4dmodelshop.co.uk</a></li>
+                                    <li><strong>MJT Latex & Supplies</strong>: Proveedor de látex en hojas cortadas y tiras de refuerzo pre-cortadas.</li>
+                                </ul>
+                            </div>
+
+                            <!-- Categoría 2: Pegamentos y Disolventes -->
+                            <div class="supplier-card glass">
+                                <div class="supplier-icon">🧪</div>
+                                <h4>Adhesivos y Disolventes</h4>
+                                <ul>
+                                    <li><strong>Solución de Caucho / Cemento de Goma (Bostik / Klebfest)</strong>: Pegamento de contacto especial para látex de secado rápido y unión flexible de alta tenacidad.</li>
+                                    <li><strong>Disolvente de Heptano Puro (Heptane 99%)</strong>: Para limpiar el talco de fábrica e imprimar costuras solapadas.</li>
+                                    <li><strong>Alcohol Isopropílico (99%)</strong>: Desengrasado y limpieza post-confección.</li>
+                                </ul>
+                            </div>
+
+                            <!-- Categoría 3: Herramientas de Precisión -->
+                            <div class="supplier-card glass">
+                                <div class="supplier-icon">✂️</div>
+                                <h4>Herramientas de Corte y Presión</h4>
+                                <ul>
+                                    <li><strong>Cúteres Rotatorios (Olfa / Fiskars 28mm & 45mm)</strong>: Imprescindibles para cortes limpios sin arrugas ni enganches en los bordes de la goma.</li>
+                                    <li><strong>Tapetes de Corte Autocicatrizantes (A0 / A1)</strong>: Mesa de trabajo graduada y protegida.</li>
+                                    <li><strong>Rodillos de Presión (Seam Roller)</strong>: Rodillos de silicona o madera para eliminar burbujas de aire al encolar.</li>
+                                    <li><strong>Pesas de Sastre Metálicas</strong>: Fijación de patrones planos sin perforar la lámina.</li>
+                                </ul>
+                            </div>
+
+                            <!-- Categoría 4: Cierres y Herrajes -->
+                            <div class="supplier-card glass">
+                                <div class="supplier-icon">🔩</div>
+                                <h4>Cierres, Argollas y Herrajes</h4>
+                                <ul>
+                                    <li><strong>Cremalleras de Poliéster Pasantes (YKK / Riri)</strong>: Cremalleras reforzadas de 2 y 3 carros para entrepierna y corsetería.</li>
+                                    <li><strong>Argollas Inox / Latón (O-Rings & D-Rings)</strong>: Argollas electrosoldadas sin costura para arneses de tensión.</li>
+                                </ul>
+                            </div>
+
+                            <!-- Categoría 5: Cuidado y Brillo -->
+                            <div class="supplier-card glass">
+                                <div class="supplier-icon">✨</div>
+                                <h4>Abrillantadores y Almacenamiento</h4>
+                                <ul>
+                                    <li><strong>Vivishine / BeGloss</strong>: Aceites de silicona pura de grado médico para acabado espejo sin residuos pegajosos.</li>
+                                    <li><strong>Talco Grado Farmacéutico Neutro</strong>: Protección antiadherente para guardar prendas en el armario.</li>
+                                </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
@@ -519,6 +583,25 @@
                     <div class="nesting-canvas-container" id="nesting-canvas-container">
                         <!-- El SVG de anidamiento se dibuja aquí -->
                     </div>
+                </div>
+            </div>
+        </div>
+    <!-- MODAL DE DIRECTORIO DE CLIENTES Y FICHAS -->
+    <div class="modal-backdrop hidden" id="client-modal-backdrop">
+        <div class="modal-card glass">
+            <div class="modal-header">
+                <h3>👥 Directorio de Clientes y Fichas Antropométricas (28 Medidas)</h3>
+                <button class="modal-close-btn" id="btn-close-client-modal">✕</button>
+            </div>
+            <div class="modal-body scrollable">
+                <div class="client-modal-toolbar">
+                    <input type="text" id="client-search-input" placeholder="🔍 Buscar cliente por nombre, email o notas..." class="search-input">
+                    <button class="header-btn highlight-header-btn" id="btn-create-new-client">➕ Crear Nuevo Cliente</button>
+                </div>
+
+                <!-- Lista de tarjetas de clientes -->
+                <div class="clients-cards-grid" id="clients-cards-container">
+                    <!-- Tarjetas de clientes inyectadas dinámicamente -->
                 </div>
             </div>
         </div>

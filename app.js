@@ -2523,11 +2523,16 @@ function importJSONProfile(event) {
     reader.readAsText(file);
 }
 
-// 18. GESTOR DE CLIENTES EN LOCALSTORAGE
+// 18. GESTOR DE CLIENTES EN LOCALSTORAGE CON FICHAS ANTROPOMÉTRICAS
 function initClientManager() {
     const clientSelect = document.getElementById("client-select");
     const btnSave = document.getElementById("btn-save-client");
     const btnDelete = document.getElementById("btn-delete-client");
+    const btnOpenModal = document.getElementById("btn-open-client-modal");
+    const btnCloseModal = document.getElementById("btn-close-client-modal");
+    const btnCreateNew = document.getElementById("btn-create-new-client");
+    const searchInput = document.getElementById("client-search-input");
+    const backdrop = document.getElementById("client-modal-backdrop");
 
     if (!clientSelect) return;
 
@@ -2536,50 +2541,11 @@ function initClientManager() {
     clientSelect.addEventListener("change", (e) => {
         const clientName = e.target.value;
         if (!clientName) return;
-
-        const clients = getStoredClients();
-        const clientData = clients[clientName];
-        if (clientData) {
-            state = { ...state, ...clientData.state };
-            state.currentClient = clientName;
-
-            if (latexThicknessInput) latexThicknessInput.value = state.thickness;
-            if (thicknessVal) thicknessVal.textContent = state.thickness.toFixed(2) + " mm";
-            if (tensionLevelSelect) tensionLevelSelect.value = state.tension;
-            if (seamAllowanceInput) seamAllowanceInput.value = state.seamAllowance;
-            if (seamVal) seamVal.textContent = state.seamAllowance + " mm";
-            if (sizePresetSelect) sizePresetSelect.value = state.sizePreset;
-
-            document.querySelectorAll(".garment-btn").forEach(btn => {
-                if (btn.dataset.garment === state.garment) btn.classList.add("active");
-                else btn.classList.remove("active");
-            });
-
-            setActiveGender(state.gender);
-            renderMeasuresTable();
-            drawPattern();
-            draw3DMannequin();
-            updateCutList();
-        }
+        loadClientProfileByName(clientName);
     });
 
     btnSave?.addEventListener("click", () => {
-        const defaultName = state.currentClient || `Cliente ${new Date().toLocaleDateString('es-ES')}`;
-        const clientName = prompt("Ingresa el nombre del cliente para guardar el perfil:", defaultName);
-        if (!clientName) return;
-
-        const clients = getStoredClients();
-        clients[clientName] = {
-            name: clientName,
-            updatedAt: new Date().toISOString(),
-            state: { ...state, currentClient: clientName }
-        };
-
-        localStorage.setItem("latexTailor_clients", JSON.stringify(clients));
-        state.currentClient = clientName;
-        loadClientsFromStorage();
-        clientSelect.value = clientName;
-        alert(`¡Perfil de '${clientName}' guardado con éxito!`);
+        saveCurrentClient();
     });
 
     btnDelete?.addEventListener("click", () => {
@@ -2588,17 +2554,171 @@ function initClientManager() {
             alert("Por favor selecciona un cliente de la lista para eliminar.");
             return;
         }
+        deleteClientByName(clientName);
+    });
 
-        if (confirm(`¿Estás seguro de que deseas eliminar el cliente '${clientName}'?`)) {
-            const clients = getStoredClients();
-            delete clients[clientName];
-            localStorage.setItem("latexTailor_clients", JSON.stringify(clients));
-            state.currentClient = null;
-            loadClientsFromStorage();
-            alert(`Cliente '${clientName}' eliminado.`);
-        }
+    btnOpenModal?.addEventListener("click", openClientModal);
+    btnCloseModal?.addEventListener("click", closeClientModal);
+    backdrop?.addEventListener("click", (e) => {
+        if (e.target.id === "client-modal-backdrop") closeClientModal();
+    });
+
+    btnCreateNew?.addEventListener("click", () => {
+        saveCurrentClient(true);
+    });
+
+    searchInput?.addEventListener("input", (e) => {
+        renderClientCards(e.target.value);
     });
 }
+
+function openClientModal() {
+    const backdrop = document.getElementById("client-modal-backdrop");
+    if (backdrop) {
+        backdrop.classList.remove("hidden");
+        renderClientCards();
+    }
+}
+
+function closeClientModal() {
+    const backdrop = document.getElementById("client-modal-backdrop");
+    if (backdrop) backdrop.classList.add("hidden");
+}
+
+function saveCurrentClient(isNew = false) {
+    const defaultName = isNew ? "" : (state.currentClient || `Cliente ${new Date().toLocaleDateString('es-ES')}`);
+    const clientName = prompt("Ingresa el Nombre Completo del Cliente:", defaultName);
+    if (!clientName || !clientName.trim()) return;
+
+    const email = prompt("Correo Electrónico / Teléfono de Contacto (Opcional):", "");
+    const notes = prompt("Notas de Confección / Preferencias de Ajuste (Opcional):", "Prefiere ajuste Segunda Piel");
+
+    const clients = getStoredClients();
+    clients[clientName.trim()] = {
+        name: clientName.trim(),
+        email: email ? email.trim() : "",
+        notes: notes ? notes.trim() : "",
+        updatedAt: new Date().toISOString(),
+        state: { ...state, currentClient: clientName.trim() }
+    };
+
+    localStorage.setItem("latexTailor_clients", JSON.stringify(clients));
+    state.currentClient = clientName.trim();
+    loadClientsFromStorage();
+    const clientSelect = document.getElementById("client-select");
+    if (clientSelect) clientSelect.value = clientName.trim();
+
+    renderClientCards();
+    alert(`¡Ficha de '${clientName.trim()}' guardada con éxito con sus 28 medidas!`);
+}
+
+function loadClientProfileByName(clientName) {
+    const clients = getStoredClients();
+    const clientData = clients[clientName];
+    if (clientData && clientData.state) {
+        state = { ...state, ...clientData.state };
+        state.currentClient = clientName;
+
+        if (latexThicknessInput) latexThicknessInput.value = state.thickness;
+        if (thicknessVal) thicknessVal.textContent = state.thickness.toFixed(2) + " mm";
+        if (tensionLevelSelect) tensionLevelSelect.value = state.tension;
+        if (seamAllowanceInput) seamAllowanceInput.value = state.seamAllowance;
+        if (seamVal) seamVal.textContent = state.seamAllowance + " mm";
+        if (sizePresetSelect) sizePresetSelect.value = state.sizePreset;
+
+        document.querySelectorAll(".garment-btn").forEach(btn => {
+            if (btn.dataset.garment === state.garment) btn.classList.add("active");
+            else btn.classList.remove("active");
+        });
+
+        setActiveGender(state.gender);
+        renderMeasuresTable();
+        drawPattern();
+        draw3DMannequin();
+        updateCutList();
+    }
+}
+
+function deleteClientByName(clientName) {
+    if (confirm(`¿Estás seguro de que deseas eliminar la ficha de '${clientName}'?`)) {
+        const clients = getStoredClients();
+        delete clients[clientName];
+        localStorage.setItem("latexTailor_clients", JSON.stringify(clients));
+        if (state.currentClient === clientName) state.currentClient = null;
+        loadClientsFromStorage();
+        renderClientCards();
+    }
+}
+
+function renderClientCards(filterText = "") {
+    const container = document.getElementById("clients-cards-container");
+    if (!container) return;
+
+    const clients = getStoredClients();
+    const keys = Object.keys(clients);
+
+    if (keys.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">
+                <p>No hay clientes registrados en la base de datos local.</p>
+                <p style="font-size: 0.8rem; margin-top: 0.5rem;">Haz clic en <strong>'➕ Crear Nuevo Cliente'</strong> para guardar el perfil de medidas actual.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const query = filterText.toLowerCase().trim();
+    let html = "";
+
+    keys.forEach(key => {
+        const client = clients[key];
+        const nameMatch = client.name.toLowerCase().includes(query);
+        const emailMatch = (client.email || "").toLowerCase().includes(query);
+        const notesMatch = (client.notes || "").toLowerCase().includes(query);
+
+        if (query && !nameMatch && !emailMatch && !notesMatch) return;
+
+        const dateStr = new Date(client.updatedAt).toLocaleDateString('es-ES');
+        const cState = client.state || {};
+        const genderStr = cState.gender === "female" ? "Mujer" : "Hombre";
+        const sizeStr = (cState.sizePreset || "M").toUpperCase();
+        const bust = cState.measurements?.bustCircum || "-";
+        const waist = cState.measurements?.waistCircum || "-";
+        const hip = cState.measurements?.hipCircum || "-";
+
+        html += `
+            <div class="client-card glass">
+                <div class="client-card-header">
+                    <div>
+                        <div class="client-card-title">${client.name}</div>
+                        <div class="client-card-date">Actualizado: ${dateStr}</div>
+                    </div>
+                    <span class="badge badge-premium" style="font-size: 0.65rem;">${genderStr} (${sizeStr})</span>
+                </div>
+                <div class="client-card-details">
+                    <div><strong>📧 Contacto:</strong> ${client.email || 'Sin información'}</div>
+                    <div><strong>📝 Notas:</strong> ${client.notes || 'Sin observaciones'}</div>
+                    <div style="margin-top: 0.4rem; font-family: 'Space Grotesk', sans-serif; color: var(--accent-cyan);">
+                        <strong>📐 Pecho:</strong> ${bust}cm | <strong>Cintura:</strong> ${waist}cm | <strong>Cadera:</strong> ${hip}cm
+                    </div>
+                </div>
+                <div class="client-card-actions">
+                    <button class="header-btn highlight-header-btn" style="flex:1;" onclick="loadClientFromCard('${encodeURIComponent(client.name)}')">📥 Cargar en Visor</button>
+                    <button class="header-btn danger-btn" onclick="deleteClientByName('${encodeURIComponent(client.name)}')">🗑️</button>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html || `<div style="grid-column:1/-1; text-align:center; padding:1.5rem; color:var(--text-muted);">No se encontraron clientes que coincidan con la búsqueda.</div>`;
+}
+
+window.loadClientFromCard = function(encodedName) {
+    const clientName = decodeURIComponent(encodedName);
+    loadClientProfileByName(clientName);
+    closeClientModal();
+    alert(`¡Perfil de '${clientName}' cargado en el visor CAD 2D y 3D!`);
+};
 
 function getStoredClients() {
     try {
